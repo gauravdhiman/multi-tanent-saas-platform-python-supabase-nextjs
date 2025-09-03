@@ -1,0 +1,29 @@
+# FastAPI and core dependencies
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.5
+pydantic-settings==2.7.1
+
+# HTTP client for external APIs (compatible with Supabase)
+httpx==0.24.1
+
+# CORS middleware
+python-multipart==0.0.12
+
+# Environment and configuration
+python-dotenv==1.0.1
+
+# Development and testing
+pytest==8.3.4
+pytest-asyncio==0.24.0
+black==24.10.0
+isort==5.13.2
+
+# Future Supabase integration
+# supabase==2.8.1
+
+# Future Redis integration  
+redis==5.2.1
+
+# JSON Web Token support (for future auth)
+PyJWT==2.10.1
