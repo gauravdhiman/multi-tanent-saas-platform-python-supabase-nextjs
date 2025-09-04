@@ -25,6 +25,16 @@ This script will:
 - Set up the Python virtual environment
 - Install backend dependencies
 
+### Easy Container Management
+
+For simplified Docker container management, we provide a comprehensive startup script:
+
+```bash
+./start.sh
+```
+
+This script allows you to easily start, stop, restart, and manage containers in both development and production modes without remembering complex Docker commands. For detailed usage instructions, see [README_STARTUP.md](README_STARTUP.md).
+
 ### Manual Setup
 
 1. **Clone and setup environment**
