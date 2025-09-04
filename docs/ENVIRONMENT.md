@@ -1,36 +1,23 @@
 # Environment Configuration
 
-This document explains how environment variables are managed across different environments in this multi-tenant SaaS platform.
+This document explains how to configure environment variables for different development scenarios.
 
-## Environment Variable Management Strategy
+## Environment Variable Files
 
-### 1. Local Development (Non-containerized)
-- **Backend**: Uses `backend/.env` file
-- **Frontend**: Uses `frontend/.env.local` file
-- These files are NOT committed to version control
-- Developers copy from example files and customize with their own values
-- **Purpose**: Used only when running services directly on the host machine (without Docker)
+The project uses different environment files depending on your development approach:
 
-### 2. Containerized Development
-- Uses root-level `.env` file
-- This file is referenced by both [docker-compose.yml](file:///Users/gauravdhiman/projects/python/multi-tanent-saas-platform-python-supabase-nextjs/docker-compose.yml) and [docker-compose.dev.yml](file:///Users/gauravdhiman/projects/python/multi-tanent-saas-platform-python-supabase-nextjs/docker-compose.dev.yml) via `env_file` directive
-- NOT committed to version control
-- Developers copy from `.env.example` and customize
-- **Purpose**: Used when running services in Docker containers
+1. **Local Development (Non-containerized)**:
+   - Backend: `backend/.env` (copy from `backend/.env.example`)
+   - Frontend: `frontend/.env.local` (copy from `frontend/.env.local.example`)
 
-### 3. Production
-- Environment variables are injected via secure methods (Docker secrets, Kubernetes secrets, etc.)
-- Never committed to version control
+2. **Containerized Development**:
+   - Root: `.env` (copy from `.env.example`)
 
-## Important Note
+**Important**: The service-specific environment files (`backend/.env` and `frontend/.env.local`) are **only for non-containerized local development**. When running services in Docker containers, the root `.env` file is used instead.
 
-The service-specific environment files (`backend/.env` and `frontend/.env.local`) are **only for non-containerized local development**. When running services in Docker containers, the root `.env` file is used instead. This separation ensures that:
+## Supabase Configuration
 
-1. Containerized environments have a single source of configuration
-2. Non-containerized development can use service-specific configurations
-3. Production environments can use secure secret injection methods
-
-## Supabase Configuration Keys
+### Required Keys
 
 The Supabase configuration requires different environment variables for frontend and backend:
 
@@ -39,71 +26,64 @@ The Supabase configuration requires different environment variables for frontend
 3. **NEXT_PUBLIC_SUPABASE_URL**: Used by the frontend (must be prefixed with NEXT_PUBLIC_ to be accessible in browser)
 4. **NEXT_PUBLIC_SUPABASE_ANON_KEY**: Used by the frontend (must be prefixed with NEXT_PUBLIC_ to be accessible in browser)
 
-**Important**: Both the root `.env` file and the service-specific files should contain the appropriate Supabase keys for their respective environments.
+### OAuth Providers
 
-## File Structure
+To enable OAuth providers like Google, you need to:
 
+1. Configure the OAuth provider in your Supabase project dashboard:
+   - Go to Authentication → Providers
+   - Enable the desired provider (e.g., Google)
+   - Configure the provider settings with your OAuth credentials
+
+2. Set the redirect URLs in your OAuth provider's dashboard:
+   - Use the Supabase callback URL: `https://YOUR_SUPABASE_PROJECT_ID.supabase.co/auth/v1/callback`
+   - You can find this URL in your Supabase dashboard under Authentication → Settings
+
+**Note**: You do not need to create any custom callback endpoints in your frontend or backend. Supabase handles the entire OAuth flow for you.
+
+For detailed instructions on setting up OAuth providers, see [OAUTH_SETUP.md](OAUTH_SETUP.md).
+
+## Frontend (.env.local)
+
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_APP_NAME=SaaS Platform
+NEXT_PUBLIC_APP_DESCRIPTION=Multi-tenant SaaS application template
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 ```
-project-root/
-├── .env                    # For containerized development (NOT committed)
-├── .env.example           # Example for containerized development (committed)
-├── backend/
-│   ├── .env              # For local backend development (NOT committed)
-│   └── .env.example      # Example for local backend development (committed)
-└── frontend/
-    ├── .env.local        # For local frontend development (NOT committed)
-    └── .env.local.example # Example for local frontend development (committed)
+
+## Backend (.env)
+
+```bash
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_KEY=your-service-role-key-here
+SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
-## Setup Instructions
+## Containerized Development (.env)
 
-### For Local Development (Non-containerized)
+```bash
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_KEY=your-service-role-key-here
+SUPABASE_ANON_KEY=your-anon-key-here
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+```
 
-1. **Backend Setup**:
-   ```bash
-   cd backend
-   cp .env.example .env
-   # Edit .env with your values
-   ```
+## Docker Configuration
 
-2. **Frontend Setup**:
-   ```bash
-   cd frontend
-   cp .env.local.example .env.local
-   # Edit .env.local with your values
-   ```
+The project includes optimized Docker configurations:
 
-### For Containerized Development
+- **Production**: Multi-stage build with minimal image size
+- **Development**: Volume mounting for hot reloading
+- **Standalone**: Next.js standalone output for optimal Docker performance
 
-1. **Root Setup**:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your values (these will be used by Docker containers)
-   ```
+Both [docker-compose.yml](file:///Users/gauravdhiman/projects/python/multi-tanent-saas-platform-python-supabase-nextjs/docker-compose.yml) and [docker-compose.dev.yml](file:///Users/gauravdhiman/projects/python/multi-tanent-saas-platform-python-supabase-nextjs/docker-compose.dev.yml) now use the `env_file` directive to load environment variables from the root `.env` file, ensuring consistency across development and production environments.
 
-2. **Run with Docker**:
-   ```bash
-   # For development with hot reloading
-   docker compose -f docker-compose.dev.yml up --build
-   
-   # For production
-   docker compose up --build
-   ```
+## Next Steps
 
-## Environment Variable Precedence
-
-The configuration follows this precedence order:
-1. Environment variables set directly in docker-compose.yml (highest precedence)
-2. Environment variables from files specified in `env_file` directive
-3. Default values defined in application code (lowest precedence)
-
-## Security Notes
-
-- Never commit actual secrets to version control
-- Use example files to document required variables
-- In production, use secure secret management systems
-- Regularly rotate secrets and keys
-
-## Required Variables
-
-See `.env.example`, `backend/.env.example`, and `frontend/.env.local.example` for complete lists of required environment variables.
+1. Copy the appropriate example file to create your environment file
+2. Update the values with your actual configuration
+3. For OAuth providers, configure them in your Supabase dashboard
+4. For detailed OAuth setup instructions, see [OAUTH_SETUP.md](OAUTH_SETUP.md)

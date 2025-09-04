@@ -6,7 +6,7 @@
  */
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session, AuthError } from '@supabase/supabase-js';
+import { User, Session, AuthError, Provider } from '@supabase/supabase-js';
 import { supabase, AuthUser, SignUpData, SignInData } from '@/lib/supabase';
 
 interface AuthContextType {
@@ -15,6 +15,7 @@ interface AuthContextType {
   loading: boolean;
   signUp: (data: SignUpData) => Promise<{ error: AuthError | null }>;
   signIn: (data: SignInData) => Promise<{ error: AuthError | null }>;
+  signInWithOAuth: (provider: Provider) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<{ error: AuthError | null }>;
   isAuthenticated: boolean;
 }
@@ -56,8 +57,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return {
       id: user.id,
       email: user.email || '',
-      firstName: metadata.first_name || '',
-      lastName: metadata.last_name || '',
+      firstName: metadata.first_name || metadata.full_name?.split(' ')[0] || '',
+      lastName: metadata.last_name || metadata.full_name?.split(' ').slice(1).join(' ') || '',
       emailConfirmedAt: user.email_confirmed_at || undefined,
       createdAt: user.created_at || '',
       updatedAt: user.updated_at || '',
@@ -98,6 +99,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  // Sign in with OAuth provider
+  const signInWithOAuth = async (provider: Provider) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+
+      if (error) {
+        return { error };
+      }
+
+      // The OAuth flow will redirect the user, so we don't need to handle the response here
+      return { error: null };
+    } catch (error) {
+      return { error: error as AuthError };
+    }
+  };
+
   // Sign out
   const signOut = async () => {
     try {
@@ -114,6 +136,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     loading,
     signUp,
     signIn,
+    signInWithOAuth,
     signOut,
     isAuthenticated: !!user,
   };

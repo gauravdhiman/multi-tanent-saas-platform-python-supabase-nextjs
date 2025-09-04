@@ -197,6 +197,17 @@ The Supabase configuration requires different environment variables for frontend
 
 **Important**: Both the root `.env` file and the service-specific files should contain the appropriate Supabase keys for their respective environments.
 
+#### OAuth Providers
+
+The application supports OAuth authentication providers like Google. To enable OAuth:
+
+1. Configure OAuth providers in your Supabase project dashboard
+2. Set the redirect URLs in your OAuth provider's dashboard to use the Supabase callback URL:
+   - Format: `https://YOUR_SUPABASE_PROJECT_ID.supabase.co/auth/v1/callback`
+3. **Note**: You do not need to create any custom callback endpoints in your frontend or backend. Supabase handles the entire OAuth flow for you.
+
+For detailed OAuth configuration instructions, see [ENVIRONMENT.md](docs/ENVIRONMENT.md) and [OAUTH_SETUP.md](docs/OAUTH_SETUP.md).
+
 #### Frontend (.env.local)
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:8000
@@ -258,9 +269,10 @@ Both [docker-compose.yml](file:///Users/gauravdhiman/projects/python/multi-tanen
 - [x] Environment variable management strategy
 - [x] Automated setup script
 - [x] Consistent environment variable loading across all Docker Compose files
+- [x] Password-based authentication with strong password policies
+- [x] Google OAuth authentication for signup and login
 
 ### 🚧 In Progress
-- [ ] Authentication system
 - [ ] Multi-tenant architecture
 - [ ] Database integration
 
