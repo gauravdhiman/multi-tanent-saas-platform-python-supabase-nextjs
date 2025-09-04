@@ -22,8 +22,7 @@ type SignInData = z.infer<typeof signInSchema>;
 
 export function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isOAuthLoading, setIsOAuthLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const authContext = useAuth();
   const router = useRouter();
@@ -37,7 +36,7 @@ export function SignInForm() {
   });
 
   const handleSignIn = async (data: SignInData) => {
-    setIsLoading(true);
+    setIsLoading('password');
     setError('');
     try {
       const result = await authContext.signIn(data);
@@ -50,23 +49,41 @@ export function SignInForm() {
       console.error('Sign in error:', error);
       setError('An unexpected error occurred. Please try again.');
     } finally {
-      setIsLoading(false);
+      setIsLoading(null);
     }
   };
 
   const handleGoogleSignIn = async () => {
-    setIsOAuthLoading(true);
+    setIsLoading('google');
     setError('');
     try {
       const result = await authContext.signInWithOAuth('google');
       if (result?.error) {
         setError(result.error.message || 'Failed to sign in with Google');
+        setIsLoading(null);
       }
+      // Note: If successful, OAuth will redirect the user away from this page
     } catch (error) {
       console.error('Google sign in error:', error);
       setError('An unexpected error occurred. Please try again.');
-    } finally {
-      setIsOAuthLoading(false);
+      setIsLoading(null);
+    }
+  };
+
+  const handleLinkedInSignIn = async () => {
+    setIsLoading('linkedin_oidc');
+    setError('');
+    try {
+      const result = await authContext.signInWithOAuth('linkedin_oidc');
+      if (result?.error) {
+        setError(result.error.message || 'Failed to sign in with LinkedIn');
+        setIsLoading(null);
+      }
+      // Note: If successful, OAuth will redirect the user away from this page
+    } catch (error) {
+      console.error('LinkedIn sign in error:', error);
+      setError('An unexpected error occurred. Please try again.');
+      setIsLoading(null);
     }
   };
 
@@ -89,7 +106,7 @@ export function SignInForm() {
               {...register('email')}
               placeholder="john@example.com"
               className="pl-10"
-              disabled={isLoading || isOAuthLoading}
+              disabled={!!isLoading}
             />
           </div>
           {errors.email && (
@@ -107,13 +124,13 @@ export function SignInForm() {
               {...register('password')}
               placeholder="Enter your password"
               className="pl-10 pr-10"
-              disabled={isLoading || isOAuthLoading}
+              disabled={!!isLoading}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-3 h-4 w-4 text-gray-400 hover:text-gray-600 cursor-pointer"
-              disabled={isLoading || isOAuthLoading}
+              disabled={!!isLoading}
             >
               {showPassword ? <EyeOff /> : <Eye />}
             </button>
@@ -129,7 +146,7 @@ export function SignInForm() {
               id="remember"
               type="checkbox"
               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              disabled={isLoading || isOAuthLoading}
+              disabled={!!isLoading}
             />
             <Label htmlFor="remember" className="text-sm text-gray-600">
               Remember me
@@ -138,13 +155,14 @@ export function SignInForm() {
           <button
             type="button"
             className="text-sm font-medium text-blue-600 hover:text-blue-500 cursor-pointer"
+            disabled={!!isLoading}
           >
             Forgot password?
           </button>
         </div>
 
-        <Button type="submit" className="w-full cursor-pointer" disabled={isLoading || isOAuthLoading}>
-          {isLoading ? (
+        <Button type="submit" className="w-full cursor-pointer" disabled={!!isLoading}>
+          {isLoading === 'password' ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Signing in...
@@ -167,10 +185,10 @@ export function SignInForm() {
       <div className="space-y-4">
         <button
           onClick={handleGoogleSignIn}
-          disabled={isLoading || isOAuthLoading}
-          className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+          disabled={!!isLoading}
+          className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 cursor-pointer"
         >
-          {isOAuthLoading ? (
+          {isLoading === 'google' ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Signing in with Google...
@@ -187,6 +205,30 @@ export function SignInForm() {
                   </svg>
                 </div>
                 <span>Sign in with Google</span>
+              </div>
+            </>
+          )}
+        </button>
+
+        <button
+          onClick={handleLinkedInSignIn}
+          disabled={!!isLoading}
+          className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 cursor-pointer"
+        >
+          {isLoading === 'linkedin_oidc' ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Signing in with LinkedIn...
+            </>
+          ) : (
+            <>
+              <div className="flex items-center">
+                <div className="bg-white border border-gray-300 rounded-md p-1 mr-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
+                    <path fill="#0077B5" d="M19.7 3H4.3A1.3 1.3 0 0 0 3 4.3v15.4A1.3 1.3 0 0 0 4.3 21h15.4a1.3 1.3 0 0 0 1.3-1.3V4.3A1.3 1.3 0 0 0 19.7 3zM8.3 18.3H5.7v-8.7h2.6v8.7zM7 8.7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm11.3 9.6h-2.6v-4.2c0-1 0-2.3-1.4-2.3s-1.6 1.1-1.6 2.2v4.3H10V9.6h2.5v1.2h.1c.4-.7 1.2-1.4 2.5-1.4 2.7 0 3.2 1.8 3.2 4.1v4.8z"/>
+                  </svg>
+                </div>
+                <span>Sign in with LinkedIn</span>
               </div>
             </>
           )}
