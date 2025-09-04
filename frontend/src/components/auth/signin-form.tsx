@@ -21,11 +21,7 @@ const signInSchema = z.object({
 
 type SignInData = z.infer<typeof signInSchema>;
 
-interface SignInFormProps {
-  onToggleMode: () => void;
-}
-
-export function SignInForm({ onToggleMode }: SignInFormProps) {
+export function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -151,16 +147,6 @@ export function SignInForm({ onToggleMode }: SignInFormProps) {
         </form>
 
         <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
-            Don&apos;t have an account?{' '}
-            <button
-              onClick={onToggleMode}
-              className="font-medium text-blue-600 hover:text-blue-500"
-              disabled={isLoading}
-            >
-              Sign up here
-            </button>
-          </p>
           <p className="text-sm text-gray-600">
             By signing in, you agree to the{' '}
             <Link href="/terms" className="text-primary hover:underline">

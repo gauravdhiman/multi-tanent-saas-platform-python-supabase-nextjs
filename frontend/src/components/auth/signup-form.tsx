@@ -23,20 +23,21 @@ const signUpSchema = z.object({
     .regex(/[a-z]/, 'Must contain lowercase letter')
     .regex(/\d/, 'Must contain a number')
     .regex(/[!@#$%^&*(),.?":{}|<>]/, 'Must contain special character'),
-  passwordConfirm: z.string(),
-}).refine((data) => data.password === data.passwordConfirm, {
+  passwordConfirm: z.string().optional(), // Make it optional
+}).refine((data) => {
+  // Only validate password match if both password and passwordConfirm have values
+  if (!data.password || !data.passwordConfirm) return true;
+  return data.password === data.passwordConfirm;
+}, {
   message: "Passwords don't match",
   path: ['passwordConfirm'],
 });
 
 type SignUpFormData = z.infer<typeof signUpSchema>;
 
-interface SignUpFormProps {
-  onToggleMode: () => void;
-}
-
-export function SignUpForm({ onToggleMode }: SignUpFormProps) {
+export function SignUpForm() {
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -48,11 +49,21 @@ export function SignUpForm({ onToggleMode }: SignUpFormProps) {
     handleSubmit,
     formState: { errors },
     watch,
+    trigger,
   } = useForm<SignUpFormData>({
     resolver: zodResolver(signUpSchema),
+    mode: 'onChange', // Validate on change
   });
   
   const password = watch('password');
+  const passwordConfirm = watch('passwordConfirm');
+  
+  // Trigger validation when passwordConfirm changes, but only if it has a value
+  React.useEffect(() => {
+    if (passwordConfirm && passwordConfirm.length > 0) {
+      trigger('passwordConfirm');
+    }
+  }, [passwordConfirm, trigger]);
   
   const getPasswordStrength = (password: string) => {
     let strength = 0;
@@ -77,7 +88,7 @@ export function SignUpForm({ onToggleMode }: SignUpFormProps) {
       const { error } = await signUp({
         email: data.email,
         password: data.password,
-        passwordConfirm: data.passwordConfirm,
+        passwordConfirm: data.passwordConfirm || '',
         firstName: data.firstName,
         lastName: data.lastName,
       });
@@ -223,19 +234,33 @@ export function SignUpForm({ onToggleMode }: SignUpFormProps) {
               <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
                 id="passwordConfirm"
-                type="password"
+                type={showConfirmPassword ? 'text' : 'password'}
                 {...register('passwordConfirm')}
                 placeholder="Confirm your password"
-                className="pl-10"
+                className="pl-10 pr-10"
                 disabled={isLoading}
+                onBlur={() => passwordConfirm && trigger('passwordConfirm')}
               />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-3 h-4 w-4 text-gray-400 hover:text-gray-600"
+                disabled={isLoading}
+              >
+                {showConfirmPassword ? <EyeOff /> : <Eye />}
+              </button>
             </div>
             {errors.passwordConfirm && (
               <p className="text-sm text-red-600">{errors.passwordConfirm.message}</p>
             )}
           </div>
           
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button 
+            id="create-account-button"
+            type="submit" 
+            className="w-full" 
+            disabled={isLoading}
+          >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -246,19 +271,6 @@ export function SignUpForm({ onToggleMode }: SignUpFormProps) {
             )}
           </Button>
         </form>
-        
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
-            Already have an account?{' '}
-            <button
-              onClick={onToggleMode}
-              className="font-medium text-blue-600 hover:text-blue-500"
-              disabled={isLoading}
-            >
-              Sign in here
-            </button>
-          </p>
-        </div>
       </CardContent>
     </Card>
   );
