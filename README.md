@@ -11,7 +11,21 @@ A production-ready template for building multi-tenant SaaS applications with Nex
 - Docker and Docker Compose
 - Python 3.11+ (for backend development)
 
-### Development Setup
+### Automated Setup
+
+Run the setup script to automatically configure your development environment:
+
+```bash
+./scripts/setup.sh
+```
+
+This script will:
+- Create environment files from examples
+- Install frontend dependencies
+- Set up the Python virtual environment
+- Install backend dependencies
+
+### Manual Setup
 
 1. **Clone and setup environment**
    ```bash
@@ -19,7 +33,7 @@ A production-ready template for building multi-tenant SaaS applications with Nex
    cd multi-tanent-saas-platform-python-supabase-nextjs
    ```
 
-2. **Frontend Development**
+2. **Frontend Development (Non-containerized)**
    ```bash
    cd frontend
    npm install
@@ -28,17 +42,36 @@ A production-ready template for building multi-tenant SaaS applications with Nex
    npm run dev
    ```
 
-3. **Using Docker for Development**
+3. **Backend Development (Non-containerized)**
    ```bash
-   # Run both frontend and backend
-   docker-compose -f docker-compose.dev.yml up --build
+   cd backend
+   # Create virtual environment
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   pip install -r requirements.txt
+   cp .env.example .env
+   # Edit .env with your configuration
+   python main.py
+   ```
+
+4. **Using Docker for Development (Containerized)**
+   ```bash
+   # Copy and configure environment file
+   cp .env.example .env
+   # Edit .env with your configuration (this file is used by Docker containers)
+   
+   # Run both frontend and backend with development settings (hot reloading)
+   docker compose -f docker-compose.dev.yml up --build
+   
+   # Run both frontend and backend with production settings
+   docker compose up --build
    ```
 
 ### Production Deployment
 
 ```bash
 # Build and run production containers
-docker-compose up --build -d
+docker compose up --build -d
 ```
 
 ## 🏗️ Architecture
@@ -104,6 +137,18 @@ docker build -f Dockerfile.dev -t saas-frontend-dev .
 docker run -p 3000:3000 saas-frontend-dev
 ```
 
+### Backend Commands
+
+```bash
+cd backend
+
+# Development with hot reload
+uvicorn main:app --reload
+
+# Production
+uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
+```
+
 ### Code Quality
 
 The project includes:
@@ -116,11 +161,55 @@ The project includes:
 
 ### Environment Variables
 
+Environment variables can be configured in multiple ways depending on your development approach:
+
+1. **Local Development (Non-containerized)**:
+   - Backend: `backend/.env` (copy from `backend/.env.example`)
+   - Frontend: `frontend/.env.local` (copy from `frontend/.env.local.example`)
+   - **Purpose**: Used only when running services directly on the host machine
+
+2. **Containerized Development**:
+   - Root: `.env` (copy from `.env.example`)
+   - **Purpose**: Used when running services in Docker containers
+
+**Important**: The service-specific environment files (`backend/.env` and `frontend/.env.local`) are **only for non-containerized local development**. When running services in Docker containers, the root `.env` file is used instead.
+
+For detailed information about environment configuration, see [ENVIRONMENT.md](docs/ENVIRONMENT.md).
+
+#### Supabase Configuration Keys
+
+The Supabase configuration requires different environment variables for frontend and backend:
+
+1. **SUPABASE_SERVICE_KEY**: Used only by the backend for administrative operations (service role key)
+2. **SUPABASE_ANON_KEY**: Used by the backend for certain operations (anon key)
+3. **NEXT_PUBLIC_SUPABASE_URL**: Used by the frontend (must be prefixed with NEXT_PUBLIC_ to be accessible in browser)
+4. **NEXT_PUBLIC_SUPABASE_ANON_KEY**: Used by the frontend (must be prefixed with NEXT_PUBLIC_ to be accessible in browser)
+
+**Important**: Both the root `.env` file and the service-specific files should contain the appropriate Supabase keys for their respective environments.
+
 #### Frontend (.env.local)
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_APP_NAME=SaaS Platform
 NEXT_PUBLIC_APP_DESCRIPTION=Multi-tenant SaaS application template
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+#### Backend (.env)
+```bash
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_KEY=your-service-role-key-here
+SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+#### Containerized Development (.env)
+```bash
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_KEY=your-service-role-key-here
+SUPABASE_ANON_KEY=your-anon-key-here
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
 ### Docker Configuration
@@ -130,6 +219,8 @@ The project includes optimized Docker configurations:
 - **Production**: Multi-stage build with minimal image size
 - **Development**: Volume mounting for hot reloading
 - **Standalone**: Next.js standalone output for optimal Docker performance
+
+Both [docker-compose.yml](file:///Users/gauravdhiman/projects/python/multi-tanent-saas-platform-python-supabase-nextjs/docker-compose.yml) and [docker-compose.dev.yml](file:///Users/gauravdhiman/projects/python/multi-tanent-saas-platform-python-supabase-nextjs/docker-compose.dev.yml) now use the `env_file` directive to load environment variables from the root `.env` file, ensuring consistency across development and production environments.
 
 ## 🔄 Next Steps
 
@@ -154,6 +245,9 @@ The project includes optimized Docker configurations:
 - [x] Docker containerization (backend)
 - [x] Docker Compose setup for development and production
 - [x] CORS configuration for frontend-backend communication
+- [x] Environment variable management strategy
+- [x] Automated setup script
+- [x] Consistent environment variable loading across all Docker Compose files
 
 ### 🚧 In Progress
 - [ ] Authentication system

@@ -10,11 +10,12 @@ services:
     volumes:
       - ./backend:/app
       - backend_cache:/app/.venv
+    env_file:
+      - .env
     environment:
       - ENVIRONMENT=development
       - DEBUG=true
       - RELOAD=true
-      - CORS_ORIGINS=["http://localhost:3000", "http://frontend-dev:3000"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -34,6 +35,8 @@ services:
       - ./frontend:/app
       - /app/node_modules
       - /app/.next
+    env_file:
+      - .env
     environment:
       - NODE_ENV=development
       - NEXT_PUBLIC_API_URL=http://localhost:8000

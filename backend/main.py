@@ -1,6 +1,6 @@
 """
 FastAPI application entry point for the multi-tenant SaaS platform.
-Includes basic health endpoint and CORS configuration.
+Includes authentication, health endpoints and CORS configuration.
 """
 
 from fastapi import FastAPI
@@ -9,7 +9,8 @@ from fastapi.responses import JSONResponse
 from datetime import datetime
 import uvicorn
 
-from config import settings
+from config import settings, supabase_config
+from src.auth.routes import auth_router
 
 
 def create_app() -> FastAPI:
@@ -33,6 +34,9 @@ def create_app() -> FastAPI:
         allow_headers=settings.cors_headers,
     )
     
+    # Include authentication routes
+    app.include_router(auth_router)
+    
     return app
 
 
@@ -54,18 +58,23 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint for monitoring and load balancers."""
+    checks = {
+        "api": "ok"
+    }
+    
+    # Check Supabase connection if configured
+    if supabase_config.is_configured():
+        supabase_healthy = supabase_config.health_check()
+        checks["supabase"] = "ok" if supabase_healthy else "error"
+    else:
+        checks["supabase"] = "not_configured"
+    
     return JSONResponse({
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
         "version": settings.app_version,
         "environment": settings.environment,
-        "checks": {
-            "api": "ok",
-            # Future health checks will be added here:
-            # "database": "ok",
-            # "redis": "ok",
-            # "external_apis": "ok",
-        }
+        "checks": checks
     })
 
 

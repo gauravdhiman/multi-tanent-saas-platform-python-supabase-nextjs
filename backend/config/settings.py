@@ -4,7 +4,8 @@ Uses Pydantic Settings for type-safe configuration handling.
 """
 
 from typing import Optional
-from pydantic import Field
+import json
+from pydantic import Field, validator
 from pydantic_settings import BaseSettings
 
 
@@ -45,6 +46,19 @@ class Settings(BaseSettings):
     # External API Settings (Future integrations)
     supabase_url: Optional[str] = Field(default=None, description="Supabase project URL")
     supabase_service_key: Optional[str] = Field(default=None, description="Supabase service key")
+    supabase_anon_key: Optional[str] = Field(default=None, description="Supabase anonymous key")
+    
+    @validator('cors_origins', pre=True)
+    def parse_cors_origins(cls, v):
+        """Parse CORS origins from environment variable string."""
+        if isinstance(v, str):
+            # Try to parse as JSON array first
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                # If not valid JSON, split by comma and strip whitespace
+                return [origin.strip() for origin in v.split(',') if origin.strip()]
+        return v
     
     class Config:
         env_file = ".env"
