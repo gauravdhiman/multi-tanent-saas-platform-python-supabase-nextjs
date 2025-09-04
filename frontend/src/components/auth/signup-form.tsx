@@ -8,7 +8,6 @@ import { Eye, EyeOff, Loader2, Mail, User, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/auth-context';
 
@@ -107,171 +106,162 @@ export function SignUpForm() {
   };
   
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold">Create Account</CardTitle>
-        <CardDescription>
-          Join our platform and start building amazing things
-        </CardDescription>
-      </CardHeader>
-      
-      <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          
-          {success && (
-            <Alert className="border-green-200 bg-green-50">
-              <AlertDescription className="text-green-800">{success}</AlertDescription>
-            </Alert>
-          )}
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="firstName">First Name</Label>
-              <div className="relative">
-                <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  id="firstName"
-                  {...register('firstName')}
-                  placeholder="John"
-                  className="pl-10"
-                  disabled={isLoading}
-                />
-              </div>
-              {errors.firstName && (
-                <p className="text-sm text-red-600">{errors.firstName.message}</p>
-              )}
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="lastName">Last Name</Label>
-              <div className="relative">
-                <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  id="lastName"
-                  {...register('lastName')}
-                  placeholder="Doe"
-                  className="pl-10"
-                  disabled={isLoading}
-                />
-              </div>
-              {errors.lastName && (
-                <p className="text-sm text-red-600">{errors.lastName.message}</p>
-              )}
-            </div>
-          </div>
-          
+    <div className="w-full max-w-md mx-auto">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        
+        {success && (
+          <Alert className="border-green-200 bg-green-50">
+            <AlertDescription className="text-green-800">{success}</AlertDescription>
+          </Alert>
+        )}
+        
+        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email Address</Label>
+            <Label htmlFor="firstName">First Name</Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
-                id="email"
-                type="email"
-                {...register('email')}
-                placeholder="john@example.com"
+                id="firstName"
+                {...register('firstName')}
+                placeholder="John"
                 className="pl-10"
                 disabled={isLoading}
               />
             </div>
-            {errors.email && (
-              <p className="text-sm text-red-600">{errors.email.message}</p>
+            {errors.firstName && (
+              <p className="text-sm text-red-600">{errors.firstName.message}</p>
             )}
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="lastName">Last Name</Label>
             <div className="relative">
-              <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                {...register('password')}
-                placeholder="Create a strong password"
-                className="pl-10 pr-10"
+                id="lastName"
+                {...register('lastName')}
+                placeholder="Doe"
+                className="pl-10"
                 disabled={isLoading}
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3 h-4 w-4 text-gray-400 hover:text-gray-600"
-                disabled={isLoading}
-              >
-                {showPassword ? <EyeOff /> : <Eye />}
-              </button>
             </div>
-            
-            {password && (
-              <div className="space-y-2">
-                <div className="flex space-x-1">
-                  {[1, 2, 3, 4, 5].map((level) => (
-                    <div
-                      key={level}
-                      className={`h-1 flex-1 rounded ${
-                        passwordStrength >= level ? strengthColors[passwordStrength - 1] : 'bg-gray-200'
-                      }`}
-                    />
-                  ))}
-                </div>
-                <p className="text-xs text-gray-600">
-                  Password strength: {strengthLabels[passwordStrength - 1] || 'Very Weak'}
-                </p>
+            {errors.lastName && (
+              <p className="text-sm text-red-600">{errors.lastName.message}</p>
+            )}
+          </div>
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="email">Email Address</Label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Input
+              id="email"
+              type="email"
+              {...register('email')}
+              placeholder="john@example.com"
+              className="pl-10"
+              disabled={isLoading}
+            />
+          </div>
+          {errors.email && (
+            <p className="text-sm text-red-600">{errors.email.message}</p>
+          )}
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              {...register('password')}
+              placeholder="Create a strong password"
+              className="pl-10 pr-10"
+              disabled={isLoading}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-3 h-4 w-4 text-gray-400 hover:text-gray-600 cursor-pointer"
+              disabled={isLoading}
+            >
+              {showPassword ? <EyeOff /> : <Eye />}
+            </button>
+          </div>
+          
+          {password && (
+            <div className="space-y-2">
+              <div className="flex space-x-1">
+                {[1, 2, 3, 4, 5].map((level) => (
+                  <div
+                    key={level}
+                    className={`h-1 flex-1 rounded ${
+                      passwordStrength >= level ? strengthColors[passwordStrength - 1] : 'bg-gray-200'
+                    }`}
+                  />
+                ))}
               </div>
-            )}
-            
-            {errors.password && (
-              <p className="text-sm text-red-600">{errors.password.message}</p>
-            )}
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="passwordConfirm">Confirm Password</Label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-              <Input
-                id="passwordConfirm"
-                type={showConfirmPassword ? 'text' : 'password'}
-                {...register('passwordConfirm')}
-                placeholder="Confirm your password"
-                className="pl-10 pr-10"
-                disabled={isLoading}
-                onBlur={() => passwordConfirm && trigger('passwordConfirm')}
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-3 h-4 w-4 text-gray-400 hover:text-gray-600"
-                disabled={isLoading}
-              >
-                {showConfirmPassword ? <EyeOff /> : <Eye />}
-              </button>
+              <p className="text-xs text-gray-600">
+                Password strength: {strengthLabels[passwordStrength - 1] || 'Very Weak'}
+              </p>
             </div>
-            {errors.passwordConfirm && (
-              <p className="text-sm text-red-600">{errors.passwordConfirm.message}</p>
-            )}
-          </div>
+          )}
           
-          <Button 
-            id="create-account-button"
-            type="submit" 
-            className="w-full" 
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating Account...
-              </>
-            ) : (
-              'Create Account'
-            )}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+          {errors.password && (
+            <p className="text-sm text-red-600">{errors.password.message}</p>
+          )}
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="passwordConfirm">Confirm Password</Label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Input
+              id="passwordConfirm"
+              type={showConfirmPassword ? 'text' : 'password'}
+              {...register('passwordConfirm')}
+              placeholder="Confirm your password"
+              className="pl-10 pr-10"
+              disabled={isLoading}
+              onBlur={() => passwordConfirm && trigger('passwordConfirm')}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-3 h-4 w-4 text-gray-400 hover:text-gray-600 cursor-pointer"
+              disabled={isLoading}
+            >
+              {showConfirmPassword ? <EyeOff /> : <Eye />}
+            </button>
+          </div>
+          {errors.passwordConfirm && (
+            <p className="text-sm text-red-600">{errors.passwordConfirm.message}</p>
+          )}
+        </div>
+        
+        <Button 
+          id="create-account-button"
+          type="submit" 
+          className="w-full cursor-pointer" 
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Creating Account...
+            </>
+          ) : (
+            'Create Account'
+          )}
+        </Button>
+      </form>
+    </div>
   );
 }
