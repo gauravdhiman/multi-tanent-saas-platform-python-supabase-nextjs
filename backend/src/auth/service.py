@@ -7,6 +7,8 @@ from gotrue import User, Session
 from gotrue.errors import AuthError
 from config import supabase_config
 from .models import SignUpRequest, SignInRequest, AuthResponse, UserProfile, ErrorResponse
+from .rbac_service import rbac_service
+import asyncio
 
 
 class AuthService:
@@ -42,6 +44,20 @@ class AuthService:
                     error="signup_failed",
                     message="Failed to create user account"
                 )
+            
+            # Assign default role (org_admin) to the new user
+            if auth_response.user:
+                # Get the org_admin role
+                org_admin_role, error = await rbac_service.get_role_by_name("org_admin")
+                if not error and org_admin_role:
+                    # Assign the role to the user
+                    from .rbac_models import UserRoleCreate
+                    user_role_data = UserRoleCreate(
+                        user_id=auth_response.user.id,
+                        role_id=org_admin_role.id,
+                        organization_id=None  # Platform-wide role
+                    )
+                    await rbac_service.assign_role_to_user(user_role_data)
             
             # If no session (email confirmation required), return success message
             if not auth_response.session:

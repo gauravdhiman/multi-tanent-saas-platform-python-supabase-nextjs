@@ -306,3 +306,34 @@ For questions and support:
 - Create a new issue if needed
 
 Built with ❤️ using Next.js, FastAPI, and modern web technologies.
+
+## Role-Based Access Control (RBAC)
+
+This platform includes a comprehensive Role-Based Access Control (RBAC) system that allows fine-grained control over user permissions. The RBAC system supports:
+
+- **Predefined Roles**: platform_admin, org_admin, and regular_user
+- **Custom Roles**: Platform administrators can create additional roles
+- **Flexible Permissions**: Permissions follow the format `resource:action`
+- **Organization-Level Permissions**: Users can have different roles in different organizations
+- **API Security**: All endpoints check user permissions before allowing access
+
+### RBAC Components
+
+1. **Database Schema**: Defined in Alembic migration `backend/alembic/versions/91759229c32b_add_initial_rbac_tables.py`
+2. **Backend Services**: Implemented in `backend/src/auth/rbac_service.py`
+3. **API Routes**: Defined in `backend/src/auth/rbac_routes.py`
+4. **Frontend Service**: Implemented in `frontend/src/services/rbac-service.ts`
+5. **React Hook**: Implemented in `frontend/src/hooks/use-rbac.ts`
+6. **Dashboard UI**: Implemented in `frontend/src/components/dashboard/rbac-dashboard.tsx`
+
+### Getting Started with RBAC
+
+1. **Database Setup**: Run Alembic migrations with `alembic upgrade head` to create the necessary tables
+2. **Default Roles**: The system automatically creates three predefined roles on first run
+3. **User Registration**: New users are automatically assigned the `regular_user` role
+4. **Role Management**: Platform administrators can manage roles and permissions through the RBAC dashboard
+
+### Documentation
+
+For detailed information about the RBAC system, see:
+- [RBAC Documentation](docs/rbac.md) - Comprehensive RBAC system documentation

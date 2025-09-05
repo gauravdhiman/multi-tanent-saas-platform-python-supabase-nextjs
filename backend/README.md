@@ -15,11 +15,14 @@ FastAPI backend for the multi-tenant SaaS platform with health endpoints and Doc
 python3 -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Install dependencies
-pip install -r requirements.txt
+# Install dependencies (runtime + development tools)
+pip install -r requirements-dev.txt
 
 # Copy environment configuration
 cp .env.example .env
+
+# Edit .env with your configuration, including DATABASE_URL for migrations
+# See docs/ENVIRONMENT.md for instructions on getting your Supabase database password
 
 # Run the application
 python main.py
@@ -203,6 +206,56 @@ The backend is prepared for:
 - **JWT**: Authentication tokens
 - **Middleware**: Tenant context, rate limiting
 - **Background Tasks**: Async processing
+
+### Database Migrations
+
+This project uses Alembic for database schema migrations while continuing to use Supabase client for runtime data operations.
+
+### Setup
+1. Install development dependencies (includes Alembic and SQLAlchemy):
+   ```bash
+   pip install -r requirements-dev.txt
+   ```
+
+2. Set the DATABASE_URL environment variable with your Supabase connection string:
+   ```bash
+   export DATABASE_URL="postgresql://postgres:[PASSWORD]@[PROJECT-REF].supabase.co:5432/postgres"
+   ```
+   
+   You can find this connection string in your Supabase dashboard under Settings → Database → Connection String.
+   
+   **To get your database password**:
+   1. Go to your Supabase project dashboard
+   2. Navigate to "Settings" → "Database"
+   3. Under "Connection Info", you'll see your database password (different from your Supabase project password)
+
+### Running Migrations
+
+#### Using Local Environment
+```bash
+# Apply all pending migrations
+alembic upgrade head
+
+# Rollback the last migration
+alembic downgrade -1
+
+# Create a new migration
+alembic revision -m "Description of the migration"
+```
+
+#### Using Docker (Development Environment)
+```bash
+# Apply all pending migrations
+docker compose -f docker-compose.dev.yml run --rm backend-dev alembic upgrade head
+
+# Rollback the last migration
+docker compose -f docker-compose.dev.yml run --rm backend-dev alembic downgrade -1
+
+# Create a new migration
+docker compose -f docker-compose.dev.yml run --rm backend-dev alembic revision -m "Description of the migration"
+```
+
+For more detailed information about using Alembic with this project, see [alembic/README.md](alembic/README.md).
 
 ## 📊 Monitoring
 

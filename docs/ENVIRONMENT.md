@@ -26,6 +26,22 @@ The Supabase configuration requires different environment variables for frontend
 3. **NEXT_PUBLIC_SUPABASE_URL**: Used by the frontend (must be prefixed with NEXT_PUBLIC_ to be accessible in browser)
 4. **NEXT_PUBLIC_SUPABASE_ANON_KEY**: Used by the frontend (must be prefixed with NEXT_PUBLIC_ to be accessible in browser)
 
+### Getting Your Supabase Database Password
+
+To configure the DATABASE_URL environment variable for Alembic migrations, you'll need your Supabase database password:
+
+1. Go to your Supabase project dashboard
+2. Navigate to "Settings" → "Database"
+3. Under "Connection Info", you'll see:
+   - **Host**: Your project reference followed by `.supabase.co`
+   - **Port**: 5432
+   - **User**: postgres
+   - **Password**: This is your database password (different from your Supabase project password)
+4. Use this information to construct your DATABASE_URL:
+   ```
+   postgresql://postgres:[DATABASE-PASSWORD]@[PROJECT-REF].supabase.co:5432/postgres
+   ```
+
 ### OAuth Providers
 
 To enable OAuth providers like Google, you need to:
@@ -59,6 +75,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_KEY=your-service-role-key-here
 SUPABASE_ANON_KEY=your-anon-key-here
+# Database Migration Settings (Alembic)
+# IMPORTANT: Update 'your-database-password-here' with your actual Supabase database password
+DATABASE_URL=postgresql://postgres:your-database-password-here@your-project-ref.supabase.co:5432/postgres
 ```
 
 ## Containerized Development (.env)
@@ -69,6 +88,9 @@ SUPABASE_SERVICE_KEY=your-service-role-key-here
 SUPABASE_ANON_KEY=your-anon-key-here
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+# Database Migration Settings (Alembic)
+# IMPORTANT: Update 'your-database-password-here' with your actual Supabase database password
+DATABASE_URL=postgresql://postgres:your-database-password-here@your-project-ref.supabase.co:5432/postgres
 ```
 
 ## Docker Configuration
@@ -86,4 +108,5 @@ Both [docker-compose.yml](file:///Users/gauravdhiman/projects/python/multi-tanen
 1. Copy the appropriate example file to create your environment file
 2. Update the values with your actual configuration
 3. For OAuth providers, configure them in your Supabase dashboard
-4. For detailed OAuth setup instructions, see [OAUTH_SETUP.md](OAUTH_SETUP.md)
+4. For database migrations, get your Supabase database password and update the DATABASE_URL
+5. For detailed OAuth setup instructions, see [OAUTH_SETUP.md](OAUTH_SETUP.md)

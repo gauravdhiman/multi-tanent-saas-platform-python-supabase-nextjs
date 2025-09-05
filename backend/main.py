@@ -11,6 +11,8 @@ import uvicorn
 
 from config import settings, supabase_config
 from src.auth.routes import auth_router
+from src.auth.rbac_routes import rbac_router
+from src.auth.example_routes import example_router
 
 
 def create_app() -> FastAPI:
@@ -36,6 +38,12 @@ def create_app() -> FastAPI:
     
     # Include authentication routes
     app.include_router(auth_router)
+    
+    # Include RBAC routes
+    app.include_router(rbac_router)
+    
+    # Include example routes (for demonstration)
+    app.include_router(example_router)
     
     return app
 

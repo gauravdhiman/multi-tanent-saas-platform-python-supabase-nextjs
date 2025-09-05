@@ -1,0 +1,13 @@
+# Development dependencies for the backend
+# This file includes all runtime dependencies plus development tools
+
+# Include all runtime dependencies
+-r requirements.txt
+
+# Development and testing tools
+alembic==1.13.1
+SQLAlchemy==2.0.31
+pytest==8.3.4
+pytest-asyncio==0.24.0
+black==24.10.0
+isort==5.13.2
