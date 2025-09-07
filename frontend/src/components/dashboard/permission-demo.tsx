@@ -9,8 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Shield, UserPlus, CreditCard, Settings } from 'lucide-react';
 
 export function PermissionDemo() {
-  const [state, actions] = useRBAC();
-  const { loading } = state;
+  const [, actions] = useRBAC();
 
   // Check various permissions
   const canCreateUsers = actions.hasPermission('user:create');

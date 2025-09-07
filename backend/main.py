@@ -8,8 +8,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from datetime import datetime
 import uvicorn
+import os
+import logging
 
 from config import settings, supabase_config
+from config.opentelemetry import setup_opentelemetry, instrument_fastapi
 from src.auth.routes import auth_router
 from src.auth.rbac_routes import rbac_router
 from src.auth.example_routes import example_router
@@ -51,10 +54,19 @@ def create_app() -> FastAPI:
 # Create the FastAPI app instance
 app = create_app()
 
+# Set up OpenTelemetry if enabled
+otel_enabled = os.getenv("OTEL_ENABLED", "false").lower() == "true"
+if otel_enabled:
+    providers = setup_opentelemetry(app_name="saas-platform-backend")
+    tracer_provider, logger_provider, meter_provider = providers
+    instrument_fastapi(app)
 
 @app.get("/")
 async def root():
     """Root endpoint with basic API information."""
+    # Log a message using OpenTelemetry
+    logging.info("Root endpoint accessed")
+    
     return JSONResponse({
         "message": "Multi-tenant SaaS Platform API",
         "version": settings.app_version,
@@ -66,6 +78,9 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint for monitoring and load balancers."""
+    # Log a message using OpenTelemetry
+    logging.info("Health check endpoint accessed")
+    
     checks = {
         "api": "ok"
     }
@@ -89,6 +104,9 @@ async def health_check():
 @app.get("/health/ready")
 async def readiness_check():
     """Readiness check for Kubernetes deployments."""
+    # Log a message using OpenTelemetry
+    logging.info("Readiness check endpoint accessed")
+    
     return JSONResponse({
         "status": "ready",
         "timestamp": datetime.utcnow().isoformat(),
@@ -98,6 +116,9 @@ async def readiness_check():
 @app.get("/health/live")
 async def liveness_check():
     """Liveness check for Kubernetes deployments."""
+    # Log a message using OpenTelemetry
+    logging.info("Liveness check endpoint accessed")
+    
     return JSONResponse({
         "status": "alive",
         "timestamp": datetime.utcnow().isoformat(),

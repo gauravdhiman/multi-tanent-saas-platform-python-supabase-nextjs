@@ -1,11 +1,11 @@
 # Root .gitignore for multi-tenant SaaS platform
 
-# Python virtual environments
-.venv*
+# Python virtual environments (anywhere in the project)
+.venv*/
 venv/
 env/
 
-# Python cache
+# Python cache (anywhere in the project)
 __pycache__/
 *.py[cod]
 *$py.class
@@ -17,7 +17,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
@@ -27,12 +26,10 @@ wheels/
 .installed.cfg
 *.egg
 
-# Environment variables
+# Environment variables (anywhere in the project)
 .env
 .env.local
 .env.*.local
-backend/.env
-frontend/.env.local
 
 # IDE and editor files
 .vscode/
@@ -50,26 +47,76 @@ frontend/.env.local
 ehthumbs.db
 Thumbs.db
 
-# Logs
+# Logs (anywhere in the project)
 *.log
 logs/
 
 # Docker
 .dockerignore
 
-# Testing
+# Testing (anywhere in the project)
 .coverage
 .pytest_cache/
 htmlcov/
 
-# Node modules (frontend)
+# Node modules (anywhere in the project)
 node_modules/
 
-# Build outputs
-dist/
-build/
-*.tgz
+# Next.js (anywhere in the project)
+.next/
 
-# Temporary files
-*.tmp
-*.temp
+# Frontend output directories (anywhere in the project)
+out/
+build/
+
+# Frontend debug files (anywhere in the project)
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Frontend vercel directories (anywhere in the project)
+.vercel
+
+# Frontend typescript files (anywhere in the project)
+*.tsbuildinfo
+next-env.d.ts
+
+# Backend cache
+backend/.venv
+backend/.venv*/
+backend/venv/
+backend/env/
+backend/__pycache__/
+backend/*.py[cod]
+backend/*$py.class
+backend/*.so
+backend/.Python
+backend/build/
+backend/develop-eggs/
+backend/dist/
+backend/downloads/
+backend/eggs/
+backend/.eggs/
+backend/lib/
+backend/lib64/
+backend/parts/
+backend/sdist/
+backend/var/
+backend/wheels/
+backend/*.egg-info/
+backend/.installed.cfg
+backend/*.egg
+
+# Frontend cache and build artifacts
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/node_modules/
+frontend/*.tsbuildinfo
+frontend/next-env.d.ts
+frontend/.vercel/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.pnpm-debug.log*

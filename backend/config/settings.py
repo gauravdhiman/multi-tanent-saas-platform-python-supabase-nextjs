@@ -48,6 +48,29 @@ class Settings(BaseSettings):
     supabase_service_key: Optional[str] = Field(default=None, description="Supabase service key")
     supabase_anon_key: Optional[str] = Field(default=None, description="Supabase anonymous key")
     
+    # OpenTelemetry Settings
+    new_relic_license_key: Optional[str] = Field(default=None, description="New Relic license key")
+    otel_enabled: bool = Field(default=False, description="Enable OpenTelemetry")
+    otel_service_name: str = Field(default="saas-platform-backend", description="OpenTelemetry service name")
+    
+    # OpenTelemetry Traces Settings
+    otel_exporter_otlp_traces_endpoint: Optional[str] = Field(default=None, description="OTLP traces endpoint")
+    otel_exporter_otlp_traces_headers: Optional[str] = Field(default=None, description="OTLP traces headers")
+    otel_exporter_otlp_traces_protocol: str = Field(default="http/protobuf", description="OTLP traces protocol")
+    otel_exporter_otlp_traces_insecure: bool = Field(default=False, description="OTLP traces insecure mode")
+    
+    # OpenTelemetry Metrics Settings
+    otel_exporter_otlp_metrics_endpoint: Optional[str] = Field(default=None, description="OTLP metrics endpoint")
+    otel_exporter_otlp_metrics_headers: Optional[str] = Field(default=None, description="OTLP metrics headers")
+    otel_exporter_otlp_metrics_protocol: str = Field(default="http/protobuf", description="OTLP metrics protocol")
+    otel_exporter_otlp_metrics_insecure: bool = Field(default=False, description="OTLP metrics insecure mode")
+    
+    # OpenTelemetry Logs Settings
+    otel_exporter_otlp_logs_endpoint: Optional[str] = Field(default=None, description="OTLP logs endpoint")
+    otel_exporter_otlp_logs_headers: Optional[str] = Field(default=None, description="OTLP logs headers")
+    otel_exporter_otlp_logs_protocol: str = Field(default="http/protobuf", description="OTLP logs protocol")
+    otel_exporter_otlp_logs_insecure: bool = Field(default=False, description="OTLP logs insecure mode")
+    
     @validator('cors_origins', pre=True)
     def parse_cors_origins(cls, v):
         """Parse CORS origins from environment variable string."""
@@ -64,6 +87,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        extra = "allow"  # Allow extra fields that are not explicitly defined
 
 
 # Global settings instance

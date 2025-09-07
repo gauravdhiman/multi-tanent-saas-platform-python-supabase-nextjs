@@ -8,6 +8,31 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session, AuthError, Provider } from '@supabase/supabase-js';
 import { supabase, AuthUser, SignUpData, SignInData } from '@/lib/supabase';
+import { getMeter } from '@/lib/opentelemetry';
+import { 
+  withTelemetrySignUp, 
+  withTelemetrySignIn, 
+  withTelemetrySignInWithOAuth, 
+  withTelemetrySignOut,
+  logInfo, 
+  recordMetric 
+} from '@/lib/opentelemetry-helpers';
+
+// Get meter for authentication operations
+const meter = getMeter('auth-context');
+
+// Create metrics only if meter is available
+const authAttemptsCounter = meter?.createCounter('auth_attempts', {
+  description: 'Number of authentication attempts',
+});
+
+const authSuccessCounter = meter?.createCounter('auth_success', {
+  description: 'Number of successful authentications',
+});
+
+const authFailureCounter = meter?.createCounter('auth_failures', {
+  description: 'Number of failed authentications',
+});
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -37,6 +62,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setSession(session);
       setUser(session ? transformSupabaseUser(session.user) : null);
       setLoading(false);
+      logInfo('Auth session initialized', {
+        hasSession: !!session,
+        userId: session?.user?.id
+      });
     });
 
     // Listen for auth changes
@@ -46,6 +75,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setSession(session);
       setUser(session ? transformSupabaseUser(session.user) : null);
       setLoading(false);
+      
+      // Log auth state changes with OpenTelemetry logger
+      logInfo('Auth state changed', {
+        event,
+        hasSession: !!session,
+        userId: session?.user?.id
+      });
     });
 
     return () => subscription.unsubscribe();
@@ -66,8 +102,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   // Sign up with email and password
-  const signUp = async (data: SignUpData) => {
-    try {
+  const signUp = withTelemetrySignUp(
+    async (data: SignUpData) => {
+      recordMetric(authAttemptsCounter, 1, { operation: 'signup', source: 'frontend' });
+      
       const { error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -79,30 +117,48 @@ export function AuthProvider({ children }: AuthProviderProps) {
         },
       });
 
+      if (error) {
+        recordMetric(authFailureCounter, 1, { operation: 'signup', error: error.status || 'unknown' });
+        throw error;
+      } else {
+        recordMetric(authSuccessCounter, 1, { operation: 'signup' });
+      }
+
       return { error };
-    } catch (error) {
-      return { error: error as AuthError };
-    }
-  };
+    },
+    { name: 'auth.signup', attributes: { operation: 'signup' } },
+    { operation: 'Signup', attributes: { operation: 'signup' } }
+  );
 
   // Sign in with email and password
-  const signIn = async (data: SignInData) => {
-    try {
+  const signIn = withTelemetrySignIn(
+    async (data: SignInData) => {
+      recordMetric(authAttemptsCounter, 1, { operation: 'signin', source: 'frontend' });
+      
       const { error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       });
 
+      if (error) {
+        recordMetric(authFailureCounter, 1, { operation: 'signin', error: error.status || 'unknown' });
+        throw error;
+      } else {
+        recordMetric(authSuccessCounter, 1, { operation: 'signin' });
+      }
+
       return { error };
-    } catch (error) {
-      return { error: error as AuthError };
-    }
-  };
+    },
+    { name: 'auth.signin', attributes: { operation: 'signin' } },
+    { operation: 'Signin', attributes: { operation: 'signin' } }
+  );
 
   // Sign in with OAuth provider
-  const signInWithOAuth = async (provider: Provider) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+  const signInWithOAuth = withTelemetrySignInWithOAuth(
+    async (provider: Provider) => {
+      recordMetric(authAttemptsCounter, 1, { operation: 'oauth_signin', source: 'frontend' });
+      
+      const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo: `${window.location.origin}/dashboard`,
@@ -110,25 +166,38 @@ export function AuthProvider({ children }: AuthProviderProps) {
       });
 
       if (error) {
-        return { error };
+        recordMetric(authFailureCounter, 1, { operation: 'oauth_signin', error: error.status || 'unknown' });
+        throw error;
+      } else {
+        recordMetric(authSuccessCounter, 1, { operation: 'oauth_signin' });
       }
 
       // The OAuth flow will redirect the user, so we don't need to handle the response here
       return { error: null };
-    } catch (error) {
-      return { error: error as AuthError };
-    }
-  };
+    },
+    { name: 'auth.oauth_signin', attributes: { operation: 'oauth_signin' } },
+    { operation: 'OAuth Signin', attributes: { operation: 'oauth_signin' } }
+  );
 
   // Sign out
-  const signOut = async () => {
-    try {
+  const signOut = withTelemetrySignOut(
+    async () => {
+      recordMetric(authAttemptsCounter, 1, { operation: 'signout', source: 'frontend' });
+      
       const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        recordMetric(authFailureCounter, 1, { operation: 'signout', error: error.status || 'unknown' });
+        throw error;
+      } else {
+        recordMetric(authSuccessCounter, 1, { operation: 'signout' });
+      }
+
       return { error };
-    } catch (error) {
-      return { error: error as AuthError };
-    }
-  };
+    },
+    { name: 'auth.signout', attributes: { operation: 'signout' } },
+    { operation: 'Signout', attributes: { operation: 'signout' } }
+  );
 
   const value: AuthContextType = {
     user,

@@ -1,7 +1,7 @@
 // components/dashboard/rbac-dashboard.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRBAC } from '@/hooks/use-rbac';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +24,6 @@ export function RBACDashboard() {
   
   // Check if user has admin privileges
   const isPlatformAdmin = actions.hasRole('platform_admin');
-  const isOrgAdmin = actions.hasRole('org_admin');
   
   // Only platform admins can manage roles and permissions
   if (!isPlatformAdmin) {

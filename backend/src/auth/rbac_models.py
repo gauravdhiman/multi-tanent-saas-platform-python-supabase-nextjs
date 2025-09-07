@@ -40,6 +40,7 @@ class RoleBase(BaseModel):
     """Base model for Role."""
     name: str = Field(..., min_length=1, max_length=50, description="Role name")
     description: Optional[str] = Field(None, max_length=500, description="Role description")
+    is_system_role: bool = Field(default=False, description="Whether this is a system role")
 
 
 class RoleCreate(RoleBase):
@@ -51,12 +52,12 @@ class RoleUpdate(BaseModel):
     """Model for updating a role."""
     name: Optional[str] = Field(None, min_length=1, max_length=50, description="Role name")
     description: Optional[str] = Field(None, max_length=500, description="Role description")
+    is_system_role: Optional[bool] = Field(None, description="Whether this is a system role")
 
 
 class Role(RoleBase):
     """Model for a role with all attributes."""
     id: UUID = Field(..., description="Role ID")
-    is_system_role: bool = Field(default=False, description="Whether this is a system role")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
 
@@ -129,5 +130,11 @@ class RoleWithPermissions(Role):
 
 class UserWithRoles(BaseModel):
     """Model for a user with their assigned roles."""
-    user_id: UUID = Field(..., description="User ID")
+    id: UUID = Field(..., description="User ID")
+    email: str = Field(..., description="User email")
+    first_name: Optional[str] = Field(None, description="User first name")
+    last_name: Optional[str] = Field(None, description="User last name")
+    is_verified: bool = Field(default=False, description="Whether the user's email is verified")
+    created_at: datetime = Field(..., description="Creation timestamp")
+    updated_at: datetime = Field(..., description="Last update timestamp")
     roles: List[RoleWithPermissions] = Field(default=[], description="List of roles assigned to this user")
