@@ -39,8 +39,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Set OpenTelemetry configuration file
-ENV OTEL_CONFIG_FILE=/app/opentelemetry-config.yaml
-
-# Run the application with OpenTelemetry instrumentation
-CMD ["opentelemetry-instrument", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+# Run the application (without auto-instrumentation)
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

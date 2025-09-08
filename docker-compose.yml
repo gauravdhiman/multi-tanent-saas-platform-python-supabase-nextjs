@@ -1,6 +1,20 @@
 version: '3.8'
 
 services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./otel-collector-config.yml:/etc/otel-collector-config.yml
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "13133:13133" # Health check
+    environment:
+      - NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}
+    networks:
+      - saas-network
+
   backend:
     build:
       context: ./backend
@@ -15,20 +29,17 @@ services:
       - OTEL_ENABLED=true
       - OTEL_SERVICE_NAME=saas-platform-backend
       # Traces
-      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=https://otlp.nr-data.net/v1/traces
-      - OTEL_EXPORTER_OTLP_TRACES_HEADERS=api-key=${NEW_RELIC_LICENSE_KEY}
-      - OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf
-      - OTEL_EXPORTER_OTLP_TRACES_INSECURE=false
+      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc
+      - OTEL_EXPORTER_OTLP_TRACES_INSECURE=true
       # Metrics
-      - OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=https://otlp.nr-data.net/v1/metrics
-      - OTEL_EXPORTER_OTLP_METRICS_HEADERS=api-key=${NEW_RELIC_LICENSE_KEY}
-      - OTEL_EXPORTER_OTLP_METRICS_PROTOCOL=http/protobuf
-      - OTEL_EXPORTER_OTLP_METRICS_INSECURE=false
+      - OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_METRICS_PROTOCOL=grpc
+      - OTEL_EXPORTER_OTLP_METRICS_INSECURE=true
       # Logs
-      - OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=https://otlp.nr-data.net/v1/logs
-      - OTEL_EXPORTER_OTLP_LOGS_HEADERS=api-key=${NEW_RELIC_LICENSE_KEY}
-      - OTEL_EXPORTER_OTLP_LOGS_PROTOCOL=http/protobuf
-      - OTEL_EXPORTER_OTLP_LOGS_INSECURE=false
+      - OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_LOGS_PROTOCOL=grpc
+      - OTEL_EXPORTER_OTLP_LOGS_INSECURE=true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -37,6 +48,8 @@ services:
       start_period: 40s
     networks:
       - saas-network
+    depends_on:
+      - otel-collector
 
   frontend:
     build:
@@ -49,8 +62,9 @@ services:
         - NEXT_PUBLIC_OTEL_ENABLED=${NEXT_PUBLIC_OTEL_ENABLED}
         - NEXT_PUBLIC_OTEL_SERVICE_NAME=${NEXT_PUBLIC_OTEL_SERVICE_NAME}
         - NEXT_PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=${NEXT_PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT}
-        - NEXT_PUBLIC_OTEL_EXPORTER_OTLP_TRACES_HEADERS=${NEXT_PUBLIC_OTEL_EXPORTER_OTLP_TRACES_HEADERS}
         - NEXT_PUBLIC_OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=${NEXT_PUBLIC_OTEL_EXPORTER_OTLP_TRACES_PROTOCOL}
+        - NEXT_PUBLIC_OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=${NEXT_PUBLIC_OTEL_EXPORTER_OTLP_METRICS_ENDPOINT}
+        - NEXT_PUBLIC_OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=${NEXT_PUBLIC_OTEL_EXPORTER_OTLP_LOGS_ENDPOINT}
     ports:
       - "3000:3000"
     env_file:
@@ -65,11 +79,14 @@ services:
       - NEXT_PUBLIC_OTEL_ENABLED=${NEXT_PUBLIC_OTEL_ENABLED}
       - NEXT_PUBLIC_OTEL_SERVICE_NAME=${NEXT_PUBLIC_OTEL_SERVICE_NAME}
       - NEXT_PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=${NEXT_PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT}
-      - NEXT_PUBLIC_OTEL_EXPORTER_OTLP_TRACES_HEADERS=${NEXT_PUBLIC_OTEL_EXPORTER_OTLP_TRACES_HEADERS}
       - NEXT_PUBLIC_OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=${NEXT_PUBLIC_OTEL_EXPORTER_OTLP_TRACES_PROTOCOL}
+      # Metrics
+      - NEXT_PUBLIC_OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=${NEXT_PUBLIC_OTEL_EXPORTER_OTLP_METRICS_ENDPOINT}
+      # Logs
+      - NEXT_PUBLIC_OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=${NEXT_PUBLIC_OTEL_EXPORTER_OTLP_LOGS_ENDPOINT}
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
+      - otel-collector
     networks:
       - saas-network
 

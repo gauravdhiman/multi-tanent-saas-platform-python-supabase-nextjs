@@ -103,6 +103,7 @@ docker compose up --build -d
 - **Containerization**: Docker & Docker Compose
 - **Scalability**: Horizontal scaling ready
 - **Load Balancing**: Nginx (planned)
+- **Observability**: OpenTelemetry with Collector architecture and manual instrumentation
 
 ## 📁 Project Structure
 
@@ -197,51 +198,17 @@ The Supabase configuration requires different environment variables for frontend
 
 **Important**: Both the root `.env` file and the service-specific files should contain the appropriate Supabase keys for their respective environments.
 
-#### OAuth Providers
+### OpenTelemetry Configuration
 
-The application supports OAuth authentication providers like Google. To enable OAuth:
+This project uses a comprehensive OpenTelemetry implementation with the following features:
 
-1. Configure OAuth providers in your Supabase project dashboard
-2. Set the redirect URLs in your OAuth provider's dashboard to use the Supabase callback URL:
-   - Format: `https://YOUR_SUPABASE_PROJECT_ID.supabase.co/auth/v1/callback`
-3. **Note**: You do not need to create any custom callback endpoints in your frontend or backend. Supabase handles the entire OAuth flow for you.
+- **OpenTelemetry Collector**: Centralized telemetry processing service
+- **Manual Instrumentation**: Both frontend and backend use manual OpenTelemetry setup for better control
+- **Traces, Metrics, Logs**: All three telemetry signals are collected and exported
+- **New Relic Integration**: Collector forwards data to New Relic for visualization
+- **CORS Support**: Collector configured to allow browser-based telemetry collection
 
-For detailed OAuth configuration instructions, see [ENVIRONMENT.md](docs/ENVIRONMENT.md) and [OAUTH_SETUP.md](docs/OAUTH_SETUP.md).
-
-#### Frontend (.env.local)
-```bash
-NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXT_PUBLIC_APP_NAME=SaaS Platform
-NEXT_PUBLIC_APP_DESCRIPTION=Multi-tenant SaaS application template
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
-```
-
-#### Backend (.env)
-```bash
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_KEY=your-service-role-key-here
-SUPABASE_ANON_KEY=your-anon-key-here
-```
-
-#### Containerized Development (.env)
-```bash
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_KEY=your-service-role-key-here
-SUPABASE_ANON_KEY=your-anon-key-here
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
-```
-
-### Docker Configuration
-
-The project includes optimized Docker configurations:
-
-- **Production**: Multi-stage build with minimal image size
-- **Development**: Volume mounting for hot reloading
-- **Standalone**: Next.js standalone output for optimal Docker performance
-
-Both [docker-compose.yml](file:///Users/gauravdhiman/projects/python/multi-tanent-saas-platform-python-supabase-nextjs/docker-compose.yml) and [docker-compose.dev.yml](file:///Users/gauravdhiman/projects/python/multi-tanent-saas-platform-python-supabase-nextjs/docker-compose.dev.yml) now use the `env_file` directive to load environment variables from the root `.env` file, ensuring consistency across development and production environments.
+For detailed information about the OpenTelemetry setup, see [OPENTELEMETRY_CONSOLIDATED.md](docs/OPENTELEMETRY_CONSOLIDATED.md).
 
 ## 🔄 Next Steps
 
@@ -271,6 +238,7 @@ Both [docker-compose.yml](file:///Users/gauravdhiman/projects/python/multi-tanen
 - [x] Consistent environment variable loading across all Docker Compose files
 - [x] Password-based authentication with strong password policies
 - [x] Google OAuth authentication for signup and login
+- [x] OpenTelemetry Collector architecture with manual instrumentation for improved observability
 
 ### 🚧 In Progress
 - [ ] Multi-tenant architecture

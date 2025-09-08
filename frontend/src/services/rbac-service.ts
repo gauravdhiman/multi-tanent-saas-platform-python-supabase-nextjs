@@ -1,19 +1,7 @@
 // services/rbac-service.ts
 import { supabase } from '@/lib/supabase';
-import { trace, SpanStatusCode, metrics } from '@opentelemetry/api';
-
-// Get tracer and meter for this module
-const tracer = trace.getTracer('rbac-service');
-const meter = metrics.getMeter('rbac-service');
-
-// Create metrics
-const rbacOperationsCounter = meter.createCounter('rbac.operations', {
-  description: 'Number of RBAC operations'
-});
-
-const rbacErrorsCounter = meter.createCounter('rbac.errors', {
-  description: 'Number of RBAC operation errors'
-});
+import { SpanStatusCode } from '@opentelemetry/api';
+import { getTracer, getMeter, ensureOpentelemetryIsInitialized } from '@/lib/opentelemetry';
 
 // Define TypeScript interfaces for RBAC entities
 export interface Role {
@@ -81,6 +69,32 @@ class RBACService {
 
   // Generic fetch wrapper with authentication and tracing
   private async fetchWithAuth(endpoint: string, options: RequestInit = {}): Promise<Response> {
+    // Ensure OpenTelemetry is initialized
+    ensureOpentelemetryIsInitialized();
+    
+    // Get tracer for this operation
+    const tracer = getTracer('rbac-service');
+    
+    // Check if tracer is available before using it
+    if (!tracer) {
+      // Fallback to regular fetch if tracer is not available
+      const token = await this.getAccessToken();
+      const defaultHeaders = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      };
+
+      const config: RequestInit = {
+        ...options,
+        headers: {
+          ...defaultHeaders,
+          ...options.headers,
+        },
+      };
+
+      return fetch(`${this.baseUrl}${endpoint}`, config);
+    }
+
     return await tracer.startActiveSpan(`http-request ${options.method || 'GET'} ${endpoint}`, async (span) => {
       try {
         const token = await this.getAccessToken();
@@ -127,7 +141,40 @@ class RBACService {
 
   // Role operations
   async createRole(roleData: Omit<Role, 'id' | 'is_system_role' | 'created_at' | 'updated_at'>): Promise<Role> {
-    rbacOperationsCounter.add(1, { operation: 'createRole', entity: 'role' });
+    // Ensure OpenTelemetry is initialized
+    ensureOpentelemetryIsInitialized();
+    
+    // Get tracer and meter for this operation
+    const tracer = getTracer('rbac-service');
+    const meter = getMeter('rbac-service');
+    
+    // Create metrics only when needed
+    const rbacOperationsCounter = meter?.createCounter('rbac.operations', {
+      description: 'Number of RBAC operations'
+    });
+    
+    const rbacErrorsCounter = meter?.createCounter('rbac.errors', {
+      description: 'Number of RBAC operation errors'
+    });
+    
+    rbacOperationsCounter?.add(1, { operation: 'createRole', entity: 'role' });
+    
+    // Check if tracer is available before using it
+    if (!tracer) {
+      const token = await this.getAccessToken();
+      const response = await fetch(`${this.baseUrl}/roles`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(roleData),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    }
     
     return await tracer.startActiveSpan('rbac.createRole', async (span) => {
       try {
@@ -141,7 +188,7 @@ class RBACService {
         span.setStatus({ code: SpanStatusCode.OK });
         return result;
       } catch (error) {
-        rbacErrorsCounter.add(1, { operation: 'createRole', error: 'exception' });
+        rbacErrorsCounter?.add(1, { operation: 'createRole', error: 'exception' });
         span.setStatus({ code: SpanStatusCode.ERROR, message: error instanceof Error ? error.message : String(error) });
         throw error;
       } finally {
@@ -151,7 +198,39 @@ class RBACService {
   }
 
   async getRoleById(roleId: string): Promise<Role> {
-    rbacOperationsCounter.add(1, { operation: 'getRoleById', entity: 'role' });
+    // Ensure OpenTelemetry is initialized
+    ensureOpentelemetryIsInitialized();
+    
+    // Get tracer and meter for this operation
+    const tracer = getTracer('rbac-service');
+    const meter = getMeter('rbac-service');
+    
+    // Create metrics only when needed
+    const rbacOperationsCounter = meter?.createCounter('rbac.operations', {
+      description: 'Number of RBAC operations'
+    });
+    
+    const rbacErrorsCounter = meter?.createCounter('rbac.errors', {
+      description: 'Number of RBAC operation errors'
+    });
+    
+    rbacOperationsCounter?.add(1, { operation: 'getRoleById', entity: 'role' });
+    
+    // Check if tracer is available before using it
+    if (!tracer) {
+      const token = await this.getAccessToken();
+      const response = await fetch(`${this.baseUrl}/roles/${roleId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    }
     
     return await tracer.startActiveSpan('rbac.getRoleById', async (span) => {
       try {
@@ -161,7 +240,7 @@ class RBACService {
         span.setStatus({ code: SpanStatusCode.OK });
         return result;
       } catch (error) {
-        rbacErrorsCounter.add(1, { operation: 'getRoleById', error: 'exception' });
+        rbacErrorsCounter?.add(1, { operation: 'getRoleById', error: 'exception' });
         span.setStatus({ code: SpanStatusCode.ERROR, message: error instanceof Error ? error.message : String(error) });
         throw error;
       } finally {
@@ -171,7 +250,39 @@ class RBACService {
   }
 
   async getAllRoles(): Promise<Role[]> {
-    rbacOperationsCounter.add(1, { operation: 'getAllRoles', entity: 'role' });
+    // Ensure OpenTelemetry is initialized
+    ensureOpentelemetryIsInitialized();
+    
+    // Get tracer and meter for this operation
+    const tracer = getTracer('rbac-service');
+    const meter = getMeter('rbac-service');
+    
+    // Create metrics only when needed
+    const rbacOperationsCounter = meter?.createCounter('rbac.operations', {
+      description: 'Number of RBAC operations'
+    });
+    
+    const rbacErrorsCounter = meter?.createCounter('rbac.errors', {
+      description: 'Number of RBAC operation errors'
+    });
+    
+    rbacOperationsCounter?.add(1, { operation: 'getAllRoles', entity: 'role' });
+    
+    // Check if tracer is available before using it
+    if (!tracer) {
+      const token = await this.getAccessToken();
+      const response = await fetch(`${this.baseUrl}/roles`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    }
     
     return await tracer.startActiveSpan('rbac.getAllRoles', async (span) => {
       try {
@@ -181,7 +292,7 @@ class RBACService {
         span.setStatus({ code: SpanStatusCode.OK });
         return result;
       } catch (error) {
-        rbacErrorsCounter.add(1, { operation: 'getAllRoles', error: 'exception' });
+        rbacErrorsCounter?.add(1, { operation: 'getAllRoles', error: 'exception' });
         span.setStatus({ code: SpanStatusCode.ERROR, message: error instanceof Error ? error.message : String(error) });
         throw error;
       } finally {
@@ -191,7 +302,40 @@ class RBACService {
   }
 
   async updateRole(roleId: string, roleData: Partial<Omit<Role, 'id' | 'is_system_role' | 'created_at' | 'updated_at'>>): Promise<Role> {
-    rbacOperationsCounter.add(1, { operation: 'updateRole', entity: 'role' });
+    // Ensure OpenTelemetry is initialized
+    ensureOpentelemetryIsInitialized();
+    
+    // Get tracer and meter for this operation
+    const tracer = getTracer('rbac-service');
+    const meter = getMeter('rbac-service');
+    
+    // Create metrics only when needed
+    const rbacOperationsCounter = meter?.createCounter('rbac.operations', {
+      description: 'Number of RBAC operations'
+    });
+    
+    const rbacErrorsCounter = meter?.createCounter('rbac.errors', {
+      description: 'Number of RBAC operation errors'
+    });
+    
+    rbacOperationsCounter?.add(1, { operation: 'updateRole', entity: 'role' });
+    
+    // Check if tracer is available before using it
+    if (!tracer) {
+      const token = await this.getAccessToken();
+      const response = await fetch(`${this.baseUrl}/roles/${roleId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(roleData),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    }
     
     return await tracer.startActiveSpan('rbac.updateRole', async (span) => {
       try {
@@ -204,7 +348,7 @@ class RBACService {
         span.setStatus({ code: SpanStatusCode.OK });
         return result;
       } catch (error) {
-        rbacErrorsCounter.add(1, { operation: 'updateRole', error: 'exception' });
+        rbacErrorsCounter?.add(1, { operation: 'updateRole', error: 'exception' });
         span.setStatus({ code: SpanStatusCode.ERROR, message: error instanceof Error ? error.message : String(error) });
         throw error;
       } finally {
@@ -214,7 +358,39 @@ class RBACService {
   }
 
   async deleteRole(roleId: string): Promise<void> {
-    rbacOperationsCounter.add(1, { operation: 'deleteRole', entity: 'role' });
+    // Ensure OpenTelemetry is initialized
+    ensureOpentelemetryIsInitialized();
+    
+    // Get tracer and meter for this operation
+    const tracer = getTracer('rbac-service');
+    const meter = getMeter('rbac-service');
+    
+    // Create metrics only when needed
+    const rbacOperationsCounter = meter?.createCounter('rbac.operations', {
+      description: 'Number of RBAC operations'
+    });
+    
+    const rbacErrorsCounter = meter?.createCounter('rbac.errors', {
+      description: 'Number of RBAC operation errors'
+    });
+    
+    rbacOperationsCounter?.add(1, { operation: 'deleteRole', entity: 'role' });
+    
+    // Check if tracer is available before using it
+    if (!tracer) {
+      const token = await this.getAccessToken();
+      const response = await fetch(`${this.baseUrl}/roles/${roleId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return;
+    }
     
     return await tracer.startActiveSpan('rbac.deleteRole', async (span) => {
       try {
@@ -224,7 +400,7 @@ class RBACService {
         });
         span.setStatus({ code: SpanStatusCode.OK });
       } catch (error) {
-        rbacErrorsCounter.add(1, { operation: 'deleteRole', error: 'exception' });
+        rbacErrorsCounter?.add(1, { operation: 'deleteRole', error: 'exception' });
         span.setStatus({ code: SpanStatusCode.ERROR, message: error instanceof Error ? error.message : String(error) });
         throw error;
       } finally {
@@ -235,7 +411,40 @@ class RBACService {
 
   // Permission operations
   async createPermission(permissionData: Omit<Permission, 'id' | 'created_at' | 'updated_at'>): Promise<Permission> {
-    rbacOperationsCounter.add(1, { operation: 'createPermission', entity: 'permission' });
+    // Ensure OpenTelemetry is initialized
+    ensureOpentelemetryIsInitialized();
+    
+    // Get tracer and meter for this operation
+    const tracer = getTracer('rbac-service');
+    const meter = getMeter('rbac-service');
+    
+    // Create metrics only when needed
+    const rbacOperationsCounter = meter?.createCounter('rbac.operations', {
+      description: 'Number of RBAC operations'
+    });
+    
+    const rbacErrorsCounter = meter?.createCounter('rbac.errors', {
+      description: 'Number of RBAC operation errors'
+    });
+    
+    rbacOperationsCounter?.add(1, { operation: 'createPermission', entity: 'permission' });
+    
+    // Check if tracer is available before using it
+    if (!tracer) {
+      const token = await this.getAccessToken();
+      const response = await fetch(`${this.baseUrl}/permissions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(permissionData),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    }
     
     return await tracer.startActiveSpan('rbac.createPermission', async (span) => {
       try {
@@ -249,7 +458,7 @@ class RBACService {
         span.setStatus({ code: SpanStatusCode.OK });
         return result;
       } catch (error) {
-        rbacErrorsCounter.add(1, { operation: 'createPermission', error: 'exception' });
+        rbacErrorsCounter?.add(1, { operation: 'createPermission', error: 'exception' });
         span.setStatus({ code: SpanStatusCode.ERROR, message: error instanceof Error ? error.message : String(error) });
         throw error;
       } finally {
@@ -259,7 +468,39 @@ class RBACService {
   }
 
   async getPermissionById(permissionId: string): Promise<Permission> {
-    rbacOperationsCounter.add(1, { operation: 'getPermissionById', entity: 'permission' });
+    // Ensure OpenTelemetry is initialized
+    ensureOpentelemetryIsInitialized();
+    
+    // Get tracer and meter for this operation
+    const tracer = getTracer('rbac-service');
+    const meter = getMeter('rbac-service');
+    
+    // Create metrics only when needed
+    const rbacOperationsCounter = meter?.createCounter('rbac.operations', {
+      description: 'Number of RBAC operations'
+    });
+    
+    const rbacErrorsCounter = meter?.createCounter('rbac.errors', {
+      description: 'Number of RBAC operation errors'
+    });
+    
+    rbacOperationsCounter?.add(1, { operation: 'getPermissionById', entity: 'permission' });
+    
+    // Check if tracer is available before using it
+    if (!tracer) {
+      const token = await this.getAccessToken();
+      const response = await fetch(`${this.baseUrl}/permissions/${permissionId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    }
     
     return await tracer.startActiveSpan('rbac.getPermissionById', async (span) => {
       try {
@@ -269,7 +510,7 @@ class RBACService {
         span.setStatus({ code: SpanStatusCode.OK });
         return result;
       } catch (error) {
-        rbacErrorsCounter.add(1, { operation: 'getPermissionById', error: 'exception' });
+        rbacErrorsCounter?.add(1, { operation: 'getPermissionById', error: 'exception' });
         span.setStatus({ code: SpanStatusCode.ERROR, message: error instanceof Error ? error.message : String(error) });
         throw error;
       } finally {
@@ -279,7 +520,39 @@ class RBACService {
   }
 
   async getAllPermissions(): Promise<Permission[]> {
-    rbacOperationsCounter.add(1, { operation: 'getAllPermissions', entity: 'permission' });
+    // Ensure OpenTelemetry is initialized
+    ensureOpentelemetryIsInitialized();
+    
+    // Get tracer and meter for this operation
+    const tracer = getTracer('rbac-service');
+    const meter = getMeter('rbac-service');
+    
+    // Create metrics only when needed
+    const rbacOperationsCounter = meter?.createCounter('rbac.operations', {
+      description: 'Number of RBAC operations'
+    });
+    
+    const rbacErrorsCounter = meter?.createCounter('rbac.errors', {
+      description: 'Number of RBAC operation errors'
+    });
+    
+    rbacOperationsCounter?.add(1, { operation: 'getAllPermissions', entity: 'permission' });
+    
+    // Check if tracer is available before using it
+    if (!tracer) {
+      const token = await this.getAccessToken();
+      const response = await fetch(`${this.baseUrl}/permissions`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    }
     
     return await tracer.startActiveSpan('rbac.getAllPermissions', async (span) => {
       try {
@@ -289,7 +562,7 @@ class RBACService {
         span.setStatus({ code: SpanStatusCode.OK });
         return result;
       } catch (error) {
-        rbacErrorsCounter.add(1, { operation: 'getAllPermissions', error: 'exception' });
+        rbacErrorsCounter?.add(1, { operation: 'getAllPermissions', error: 'exception' });
         span.setStatus({ code: SpanStatusCode.ERROR, message: error instanceof Error ? error.message : String(error) });
         throw error;
       } finally {
@@ -299,7 +572,40 @@ class RBACService {
   }
 
   async updatePermission(permissionId: string, permissionData: Partial<Omit<Permission, 'id' | 'created_at' | 'updated_at'>>): Promise<Permission> {
-    rbacOperationsCounter.add(1, { operation: 'updatePermission', entity: 'permission' });
+    // Ensure OpenTelemetry is initialized
+    ensureOpentelemetryIsInitialized();
+    
+    // Get tracer and meter for this operation
+    const tracer = getTracer('rbac-service');
+    const meter = getMeter('rbac-service');
+    
+    // Create metrics only when needed
+    const rbacOperationsCounter = meter?.createCounter('rbac.operations', {
+      description: 'Number of RBAC operations'
+    });
+    
+    const rbacErrorsCounter = meter?.createCounter('rbac.errors', {
+      description: 'Number of RBAC operation errors'
+    });
+    
+    rbacOperationsCounter?.add(1, { operation: 'updatePermission', entity: 'permission' });
+    
+    // Check if tracer is available before using it
+    if (!tracer) {
+      const token = await this.getAccessToken();
+      const response = await fetch(`${this.baseUrl}/permissions/${permissionId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(permissionData),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    }
     
     return await tracer.startActiveSpan('rbac.updatePermission', async (span) => {
       try {
@@ -312,7 +618,7 @@ class RBACService {
         span.setStatus({ code: SpanStatusCode.OK });
         return result;
       } catch (error) {
-        rbacErrorsCounter.add(1, { operation: 'updatePermission', error: 'exception' });
+        rbacErrorsCounter?.add(1, { operation: 'updatePermission', error: 'exception' });
         span.setStatus({ code: SpanStatusCode.ERROR, message: error instanceof Error ? error.message : String(error) });
         throw error;
       } finally {
@@ -322,7 +628,39 @@ class RBACService {
   }
 
   async deletePermission(permissionId: string): Promise<void> {
-    rbacOperationsCounter.add(1, { operation: 'deletePermission', entity: 'permission' });
+    // Ensure OpenTelemetry is initialized
+    ensureOpentelemetryIsInitialized();
+    
+    // Get tracer and meter for this operation
+    const tracer = getTracer('rbac-service');
+    const meter = getMeter('rbac-service');
+    
+    // Create metrics only when needed
+    const rbacOperationsCounter = meter?.createCounter('rbac.operations', {
+      description: 'Number of RBAC operations'
+    });
+    
+    const rbacErrorsCounter = meter?.createCounter('rbac.errors', {
+      description: 'Number of RBAC operation errors'
+    });
+    
+    rbacOperationsCounter?.add(1, { operation: 'deletePermission', entity: 'permission' });
+    
+    // Check if tracer is available before using it
+    if (!tracer) {
+      const token = await this.getAccessToken();
+      const response = await fetch(`${this.baseUrl}/permissions/${permissionId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return;
+    }
     
     return await tracer.startActiveSpan('rbac.deletePermission', async (span) => {
       try {
@@ -332,7 +670,7 @@ class RBACService {
         });
         span.setStatus({ code: SpanStatusCode.OK });
       } catch (error) {
-        rbacErrorsCounter.add(1, { operation: 'deletePermission', error: 'exception' });
+        rbacErrorsCounter?.add(1, { operation: 'deletePermission', error: 'exception' });
         span.setStatus({ code: SpanStatusCode.ERROR, message: error instanceof Error ? error.message : String(error) });
         throw error;
       } finally {
@@ -343,7 +681,39 @@ class RBACService {
 
   // Role-Permission operations
   async assignPermissionToRole(roleId: string, permissionId: string): Promise<RolePermission> {
-    rbacOperationsCounter.add(1, { operation: 'assignPermissionToRole', entity: 'role_permission' });
+    // Ensure OpenTelemetry is initialized
+    ensureOpentelemetryIsInitialized();
+    
+    // Get tracer and meter for this operation
+    const tracer = getTracer('rbac-service');
+    const meter = getMeter('rbac-service');
+    
+    // Create metrics only when needed
+    const rbacOperationsCounter = meter?.createCounter('rbac.operations', {
+      description: 'Number of RBAC operations'
+    });
+    
+    const rbacErrorsCounter = meter?.createCounter('rbac.errors', {
+      description: 'Number of RBAC operation errors'
+    });
+    
+    rbacOperationsCounter?.add(1, { operation: 'assignPermissionToRole', entity: 'role_permission' });
+    
+    // Check if tracer is available before using it
+    if (!tracer) {
+      const token = await this.getAccessToken();
+      const response = await fetch(`${this.baseUrl}/role-permissions?role_id=${roleId}&permission_id=${permissionId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    }
     
     return await tracer.startActiveSpan('rbac.assignPermissionToRole', async (span) => {
       try {
@@ -356,7 +726,7 @@ class RBACService {
         span.setStatus({ code: SpanStatusCode.OK });
         return result;
       } catch (error) {
-        rbacErrorsCounter.add(1, { operation: 'assignPermissionToRole', error: 'exception' });
+        rbacErrorsCounter?.add(1, { operation: 'assignPermissionToRole', error: 'exception' });
         span.setStatus({ code: SpanStatusCode.ERROR, message: error instanceof Error ? error.message : String(error) });
         throw error;
       } finally {
@@ -366,7 +736,39 @@ class RBACService {
   }
 
   async removePermissionFromRole(roleId: string, permissionId: string): Promise<void> {
-    rbacOperationsCounter.add(1, { operation: 'removePermissionFromRole', entity: 'role_permission' });
+    // Ensure OpenTelemetry is initialized
+    ensureOpentelemetryIsInitialized();
+    
+    // Get tracer and meter for this operation
+    const tracer = getTracer('rbac-service');
+    const meter = getMeter('rbac-service');
+    
+    // Create metrics only when needed
+    const rbacOperationsCounter = meter?.createCounter('rbac.operations', {
+      description: 'Number of RBAC operations'
+    });
+    
+    const rbacErrorsCounter = meter?.createCounter('rbac.errors', {
+      description: 'Number of RBAC operation errors'
+    });
+    
+    rbacOperationsCounter?.add(1, { operation: 'removePermissionFromRole', entity: 'role_permission' });
+    
+    // Check if tracer is available before using it
+    if (!tracer) {
+      const token = await this.getAccessToken();
+      const response = await fetch(`${this.baseUrl}/role-permissions?role_id=${roleId}&permission_id=${permissionId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return;
+    }
     
     return await tracer.startActiveSpan('rbac.removePermissionFromRole', async (span) => {
       try {
@@ -377,7 +779,7 @@ class RBACService {
         });
         span.setStatus({ code: SpanStatusCode.OK });
       } catch (error) {
-        rbacErrorsCounter.add(1, { operation: 'removePermissionFromRole', error: 'exception' });
+        rbacErrorsCounter?.add(1, { operation: 'removePermissionFromRole', error: 'exception' });
         span.setStatus({ code: SpanStatusCode.ERROR, message: error instanceof Error ? error.message : String(error) });
         throw error;
       } finally {
@@ -387,7 +789,39 @@ class RBACService {
   }
 
   async getPermissionsForRole(roleId: string): Promise<Permission[]> {
-    rbacOperationsCounter.add(1, { operation: 'getPermissionsForRole', entity: 'role_permission' });
+    // Ensure OpenTelemetry is initialized
+    ensureOpentelemetryIsInitialized();
+    
+    // Get tracer and meter for this operation
+    const tracer = getTracer('rbac-service');
+    const meter = getMeter('rbac-service');
+    
+    // Create metrics only when needed
+    const rbacOperationsCounter = meter?.createCounter('rbac.operations', {
+      description: 'Number of RBAC operations'
+    });
+    
+    const rbacErrorsCounter = meter?.createCounter('rbac.errors', {
+      description: 'Number of RBAC operation errors'
+    });
+    
+    rbacOperationsCounter?.add(1, { operation: 'getPermissionsForRole', entity: 'role_permission' });
+    
+    // Check if tracer is available before using it
+    if (!tracer) {
+      const token = await this.getAccessToken();
+      const response = await fetch(`${this.baseUrl}/roles/${roleId}/permissions`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    }
     
     return await tracer.startActiveSpan('rbac.getPermissionsForRole', async (span) => {
       try {
@@ -398,7 +832,7 @@ class RBACService {
         span.setStatus({ code: SpanStatusCode.OK });
         return result;
       } catch (error) {
-        rbacErrorsCounter.add(1, { operation: 'getPermissionsForRole', error: 'exception' });
+        rbacErrorsCounter?.add(1, { operation: 'getPermissionsForRole', error: 'exception' });
         span.setStatus({ code: SpanStatusCode.ERROR, message: error instanceof Error ? error.message : String(error) });
         throw error;
       } finally {
@@ -409,7 +843,40 @@ class RBACService {
 
   // User-Role operations
   async assignRoleToUser(userRoleData: Omit<UserRole, 'id' | 'created_at' | 'updated_at'>): Promise<UserRole> {
-    rbacOperationsCounter.add(1, { operation: 'assignRoleToUser', entity: 'user_role' });
+    // Ensure OpenTelemetry is initialized
+    ensureOpentelemetryIsInitialized();
+    
+    // Get tracer and meter for this operation
+    const tracer = getTracer('rbac-service');
+    const meter = getMeter('rbac-service');
+    
+    // Create metrics only when needed
+    const rbacOperationsCounter = meter?.createCounter('rbac.operations', {
+      description: 'Number of RBAC operations'
+    });
+    
+    const rbacErrorsCounter = meter?.createCounter('rbac.errors', {
+      description: 'Number of RBAC operation errors'
+    });
+    
+    rbacOperationsCounter?.add(1, { operation: 'assignRoleToUser', entity: 'user_role' });
+    
+    // Check if tracer is available before using it
+    if (!tracer) {
+      const token = await this.getAccessToken();
+      const response = await fetch(`${this.baseUrl}/user-roles`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(userRoleData),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    }
     
     return await tracer.startActiveSpan('rbac.assignRoleToUser', async (span) => {
       try {
@@ -427,7 +894,7 @@ class RBACService {
         span.setStatus({ code: SpanStatusCode.OK });
         return result;
       } catch (error) {
-        rbacErrorsCounter.add(1, { operation: 'assignRoleToUser', error: 'exception' });
+        rbacErrorsCounter?.add(1, { operation: 'assignRoleToUser', error: 'exception' });
         span.setStatus({ code: SpanStatusCode.ERROR, message: error instanceof Error ? error.message : String(error) });
         throw error;
       } finally {
@@ -437,7 +904,40 @@ class RBACService {
   }
 
   async updateUserRole(userRoleId: string, userRoleData: Partial<Omit<UserRole, 'id' | 'user_id' | 'created_at' | 'updated_at'>>): Promise<UserRole> {
-    rbacOperationsCounter.add(1, { operation: 'updateUserRole', entity: 'user_role' });
+    // Ensure OpenTelemetry is initialized
+    ensureOpentelemetryIsInitialized();
+    
+    // Get tracer and meter for this operation
+    const tracer = getTracer('rbac-service');
+    const meter = getMeter('rbac-service');
+    
+    // Create metrics only when needed
+    const rbacOperationsCounter = meter?.createCounter('rbac.operations', {
+      description: 'Number of RBAC operations'
+    });
+    
+    const rbacErrorsCounter = meter?.createCounter('rbac.errors', {
+      description: 'Number of RBAC operation errors'
+    });
+    
+    rbacOperationsCounter?.add(1, { operation: 'updateUserRole', entity: 'user_role' });
+    
+    // Check if tracer is available before using it
+    if (!tracer) {
+      const token = await this.getAccessToken();
+      const response = await fetch(`${this.baseUrl}/user-roles/${userRoleId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(userRoleData),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    }
     
     return await tracer.startActiveSpan('rbac.updateUserRole', async (span) => {
       try {
@@ -450,7 +950,7 @@ class RBACService {
         span.setStatus({ code: SpanStatusCode.OK });
         return result;
       } catch (error) {
-        rbacErrorsCounter.add(1, { operation: 'updateUserRole', error: 'exception' });
+        rbacErrorsCounter?.add(1, { operation: 'updateUserRole', error: 'exception' });
         span.setStatus({ code: SpanStatusCode.ERROR, message: error instanceof Error ? error.message : String(error) });
         throw error;
       } finally {
@@ -460,7 +960,39 @@ class RBACService {
   }
 
   async removeRoleFromUser(userRoleId: string): Promise<void> {
-    rbacOperationsCounter.add(1, { operation: 'removeRoleFromUser', entity: 'user_role' });
+    // Ensure OpenTelemetry is initialized
+    ensureOpentelemetryIsInitialized();
+    
+    // Get tracer and meter for this operation
+    const tracer = getTracer('rbac-service');
+    const meter = getMeter('rbac-service');
+    
+    // Create metrics only when needed
+    const rbacOperationsCounter = meter?.createCounter('rbac.operations', {
+      description: 'Number of RBAC operations'
+    });
+    
+    const rbacErrorsCounter = meter?.createCounter('rbac.errors', {
+      description: 'Number of RBAC operation errors'
+    });
+    
+    rbacOperationsCounter?.add(1, { operation: 'removeRoleFromUser', entity: 'user_role' });
+    
+    // Check if tracer is available before using it
+    if (!tracer) {
+      const token = await this.getAccessToken();
+      const response = await fetch(`${this.baseUrl}/user-roles/${userRoleId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return;
+    }
     
     return await tracer.startActiveSpan('rbac.removeRoleFromUser', async (span) => {
       try {
@@ -470,7 +1002,7 @@ class RBACService {
         });
         span.setStatus({ code: SpanStatusCode.OK });
       } catch (error) {
-        rbacErrorsCounter.add(1, { operation: 'removeRoleFromUser', error: 'exception' });
+        rbacErrorsCounter?.add(1, { operation: 'removeRoleFromUser', error: 'exception' });
         span.setStatus({ code: SpanStatusCode.ERROR, message: error instanceof Error ? error.message : String(error) });
         throw error;
       } finally {
@@ -480,7 +1012,42 @@ class RBACService {
   }
 
   async getRolesForUser(userId: string, organizationId?: string): Promise<Role[]> {
-    rbacOperationsCounter.add(1, { operation: 'getRolesForUser', entity: 'user_role' });
+    // Ensure OpenTelemetry is initialized
+    ensureOpentelemetryIsInitialized();
+    
+    // Get tracer and meter for this operation
+    const tracer = getTracer('rbac-service');
+    const meter = getMeter('rbac-service');
+    
+    // Create metrics only when needed
+    const rbacOperationsCounter = meter?.createCounter('rbac.operations', {
+      description: 'Number of RBAC operations'
+    });
+    
+    const rbacErrorsCounter = meter?.createCounter('rbac.errors', {
+      description: 'Number of RBAC operation errors'
+    });
+    
+    rbacOperationsCounter?.add(1, { operation: 'getRolesForUser', entity: 'user_role' });
+    
+    // Check if tracer is available before using it
+    if (!tracer) {
+      const token = await this.getAccessToken();
+      const url = organizationId 
+        ? `${this.baseUrl}/users/${userId}/roles?organization_id=${organizationId}`
+        : `${this.baseUrl}/users/${userId}/roles`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    }
     
     return await tracer.startActiveSpan('rbac.getRolesForUser', async (span) => {
       try {
@@ -497,7 +1064,7 @@ class RBACService {
         span.setStatus({ code: SpanStatusCode.OK });
         return result;
       } catch (error) {
-        rbacErrorsCounter.add(1, { operation: 'getRolesForUser', error: 'exception' });
+        rbacErrorsCounter?.add(1, { operation: 'getRolesForUser', error: 'exception' });
         span.setStatus({ code: SpanStatusCode.ERROR, message: error instanceof Error ? error.message : String(error) });
         throw error;
       } finally {
@@ -507,7 +1074,42 @@ class RBACService {
   }
 
   async getUserRolesWithPermissions(userId: string, organizationId?: string): Promise<RoleWithPermissions[]> {
-    rbacOperationsCounter.add(1, { operation: 'getUserRolesWithPermissions', entity: 'user_role' });
+    // Ensure OpenTelemetry is initialized
+    ensureOpentelemetryIsInitialized();
+    
+    // Get tracer and meter for this operation
+    const tracer = getTracer('rbac-service');
+    const meter = getMeter('rbac-service');
+    
+    // Create metrics only when needed
+    const rbacOperationsCounter = meter?.createCounter('rbac.operations', {
+      description: 'Number of RBAC operations'
+    });
+    
+    const rbacErrorsCounter = meter?.createCounter('rbac.errors', {
+      description: 'Number of RBAC operation errors'
+    });
+    
+    rbacOperationsCounter?.add(1, { operation: 'getUserRolesWithPermissions', entity: 'user_role' });
+    
+    // Check if tracer is available before using it
+    if (!tracer) {
+      const token = await this.getAccessToken();
+      const url = organizationId 
+        ? `${this.baseUrl}/users/${userId}/roles-with-permissions?organization_id=${organizationId}`
+        : `${this.baseUrl}/users/${userId}/roles-with-permissions`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    }
     
     return await tracer.startActiveSpan('rbac.getUserRolesWithPermissions', async (span) => {
       try {
@@ -524,7 +1126,7 @@ class RBACService {
         span.setStatus({ code: SpanStatusCode.OK });
         return result;
       } catch (error) {
-        rbacErrorsCounter.add(1, { operation: 'getUserRolesWithPermissions', error: 'exception' });
+        rbacErrorsCounter?.add(1, { operation: 'getUserRolesWithPermissions', error: 'exception' });
         span.setStatus({ code: SpanStatusCode.ERROR, message: error instanceof Error ? error.message : String(error) });
         throw error;
       } finally {
@@ -535,7 +1137,42 @@ class RBACService {
 
   // Permission checking
   async userHasPermission(userId: string, permissionName: string, organizationId?: string): Promise<boolean> {
-    rbacOperationsCounter.add(1, { operation: 'userHasPermission', entity: 'permission_check' });
+    // Ensure OpenTelemetry is initialized
+    ensureOpentelemetryIsInitialized();
+    
+    // Get tracer and meter for this operation
+    const tracer = getTracer('rbac-service');
+    const meter = getMeter('rbac-service');
+    
+    // Create metrics only when needed
+    const rbacOperationsCounter = meter?.createCounter('rbac.operations', {
+      description: 'Number of RBAC operations'
+    });
+    
+    const rbacErrorsCounter = meter?.createCounter('rbac.errors', {
+      description: 'Number of RBAC operation errors'
+    });
+    
+    rbacOperationsCounter?.add(1, { operation: 'userHasPermission', entity: 'permission_check' });
+    
+    // Check if tracer is available before using it
+    if (!tracer) {
+      const token = await this.getAccessToken();
+      const url = organizationId 
+        ? `${this.baseUrl}/users/${userId}/has-permission/${permissionName}?organization_id=${organizationId}`
+        : `${this.baseUrl}/users/${userId}/has-permission/${permissionName}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    }
     
     return await tracer.startActiveSpan('rbac.userHasPermission', async (span) => {
       try {
@@ -553,7 +1190,7 @@ class RBACService {
         span.setStatus({ code: SpanStatusCode.OK });
         return result;
       } catch (error) {
-        rbacErrorsCounter.add(1, { operation: 'userHasPermission', error: 'exception' });
+        rbacErrorsCounter?.add(1, { operation: 'userHasPermission', error: 'exception' });
         span.setStatus({ code: SpanStatusCode.ERROR, message: error instanceof Error ? error.message : String(error) });
         throw error;
       } finally {
@@ -563,7 +1200,42 @@ class RBACService {
   }
 
   async userHasRole(userId: string, roleName: string, organizationId?: string): Promise<boolean> {
-    rbacOperationsCounter.add(1, { operation: 'userHasRole', entity: 'role_check' });
+    // Ensure OpenTelemetry is initialized
+    ensureOpentelemetryIsInitialized();
+    
+    // Get tracer and meter for this operation
+    const tracer = getTracer('rbac-service');
+    const meter = getMeter('rbac-service');
+    
+    // Create metrics only when needed
+    const rbacOperationsCounter = meter?.createCounter('rbac.operations', {
+      description: 'Number of RBAC operations'
+    });
+    
+    const rbacErrorsCounter = meter?.createCounter('rbac.errors', {
+      description: 'Number of RBAC operation errors'
+    });
+    
+    rbacOperationsCounter?.add(1, { operation: 'userHasRole', entity: 'role_check' });
+    
+    // Check if tracer is available before using it
+    if (!tracer) {
+      const token = await this.getAccessToken();
+      const url = organizationId 
+        ? `${this.baseUrl}/users/${userId}/has-role/${roleName}?organization_id=${organizationId}`
+        : `${this.baseUrl}/users/${userId}/has-role/${roleName}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    }
     
     return await tracer.startActiveSpan('rbac.userHasRole', async (span) => {
       try {
@@ -581,7 +1253,7 @@ class RBACService {
         span.setStatus({ code: SpanStatusCode.OK });
         return result;
       } catch (error) {
-        rbacErrorsCounter.add(1, { operation: 'userHasRole', error: 'exception' });
+        rbacErrorsCounter?.add(1, { operation: 'userHasRole', error: 'exception' });
         span.setStatus({ code: SpanStatusCode.ERROR, message: error instanceof Error ? error.message : String(error) });
         throw error;
       } finally {

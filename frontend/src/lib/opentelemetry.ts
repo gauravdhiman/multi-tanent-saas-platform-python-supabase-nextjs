@@ -1,8 +1,7 @@
 // lib/opentelemetry.ts
 import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api';
-import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
-import { BatchSpanProcessor, SpanProcessor } from '@opentelemetry/sdk-trace-base';
+import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
@@ -11,15 +10,6 @@ import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions'
 import { MeterProvider } from '@opentelemetry/sdk-metrics';
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import { LoggerProvider, SimpleLogRecordProcessor } from '@opentelemetry/sdk-logs';
-import { Context } from '@opentelemetry/api';
-
-// Import span types
-import type { Span } from '@opentelemetry/sdk-trace-base';
-
-// Interface to extend span with our custom property
-interface ExtendedSpan extends Span {
-  _originalName?: string;
-}
 
 // Simple function to check if a span should be excluded
 function shouldExcludeSpan(spanName: string): boolean {
@@ -53,41 +43,6 @@ function shouldExcludeSpan(spanName: string): boolean {
   return false;
 }
 
-// Custom Span Processor to filter out Next.js internal spans
-class NextJsInternalSpanFilterProcessor implements SpanProcessor {
-  private nextSpanProcessor: SpanProcessor;
-
-  constructor(nextSpanProcessor: SpanProcessor) {
-    this.nextSpanProcessor = nextSpanProcessor;
-  }
-
-  onStart(span: Span, context: Context) {
-    // Store the original span name for later checking
-    (span as ExtendedSpan)._originalName = span.name;
-    this.nextSpanProcessor.onStart(span, context);
-  }
-
-  onEnd(span: Span) {
-    // Check if this span should be excluded
-    const extendedSpan = span as ExtendedSpan;
-    const spanName = span.name || extendedSpan._originalName || '';
-    
-    if (!shouldExcludeSpan(spanName)) {
-      // Only pass to next processor if not excluded
-      this.nextSpanProcessor.onEnd(span);
-    }
-    // If excluded, we simply don't call the next processor, effectively filtering out the span
-  }
-
-  shutdown(): Promise<void> {
-    return this.nextSpanProcessor.shutdown();
-  }
-
-  forceFlush(): Promise<void> {
-    return this.nextSpanProcessor.forceFlush();
-  }
-}
-
 // Check if we've already set up the diagnostics logger
 const hasSetupDiagLogger = (global as unknown as Record<string, unknown>).__OTEL_DIAG_LOGGER_SETUP__;
 
@@ -101,6 +56,14 @@ let tracerProvider: WebTracerProvider | null = null;
 let loggerProvider: LoggerProvider | null = null;
 let meterProvider: MeterProvider | null = null;
 let isInitialized = false;
+
+// Add lazy initialization functions
+export function ensureOpentelemetryIsInitialized(): boolean {
+  if (!isInitialized) {
+    initOpenTelemetry();
+  }
+  return isInitialized;
+}
 
 export function initOpenTelemetry() {
   // Check if OpenTelemetry is already initialized
@@ -130,97 +93,185 @@ export function initOpenTelemetry() {
     // Create tracer provider
     tracerProvider = new WebTracerProvider({ resource });
     
-    // Set up trace exporter
-    const traceEndpoint = process.env.NEXT_PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT || 'https://otlp.nr-data.net/v1/traces';
+    // Set up trace exporter to send to OTel Collector
+    // For browser-based frontend, we need to use localhost instead of docker internal hostname
+    const traceEndpoint = process.env.NEXT_PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT?.replace('otel-collector', 'localhost') || 'http://localhost:4318/v1/traces';
     console.log('Trace endpoint:', traceEndpoint);
-    
-    // Parse trace headers
-    let traceHeaders: Record<string, string> = {};
-    const traceHeadersStr = process.env.NEXT_PUBLIC_OTEL_EXPORTER_OTLP_TRACES_HEADERS;
-    if (traceHeadersStr) {
-      console.log('Trace headers string:', traceHeadersStr);
-      try {
-        // Handle both key=value format and JSON format
-        if (traceHeadersStr.includes('=')) {
-          const [key, value] = traceHeadersStr.split('=', 2);
-          traceHeaders[key.trim()] = value.trim();
-        } else {
-          // Try to parse as JSON
-          traceHeaders = JSON.parse(traceHeadersStr);
-        }
-        console.log('Parsed trace headers:', traceHeaders);
-      } catch (e) {
-        console.error('Failed to parse trace headers:', e);
-      }
-    }
     
     const traceExporter = new OTLPTraceExporter({
       url: traceEndpoint,
-      headers: traceHeaders,
+      // Add error handling for the exporter
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
     
-    // Create the batch span processor
-    const batchSpanProcessor = new BatchSpanProcessor(traceExporter);
+    // Add event listeners to the exporter to catch errors
+    // Note: OTLP exporters don't have direct event listeners, but we can wrap the export method
+    const originalExport = traceExporter.export.bind(traceExporter);
+    traceExporter.export = function(spans, resultCallback) {
+      console.log('Attempting to export traces:', spans.length);
+      console.log('Trace endpoint being used:', traceEndpoint);
+      
+      // Filter out spans that should be excluded
+      const filteredSpans = spans.filter(span => {
+        // For ReadableSpan objects, we need to check the name property
+        const spanName = 'name' in span ? (span as { name: string }).name : 'Unknown Span';
+        const shouldExclude = shouldExcludeSpan(spanName);
+        if (shouldExclude) {
+          console.log('Excluding trace span:', spanName);
+        }
+        return !shouldExclude;
+      });
+      
+      console.log('Filtered trace spans to export:', filteredSpans.length);
+      
+      // Call the original export method
+      originalExport(filteredSpans, (result) => {
+        console.log('Trace export result:', result);
+        if (result.code !== 0) {
+          console.error('Trace export failed with error:', result.error);
+        } else {
+          console.log('Trace export successful');
+        }
+        // Call the original callback
+        resultCallback(result);
+      });
+    };
     
-    // Wrap it with our custom filter processor to exclude Next.js internal spans
-    const filteredSpanProcessor = new NextJsInternalSpanFilterProcessor(batchSpanProcessor);
+    // Create the batch span processor with more aggressive flushing
+    const batchSpanProcessor = new BatchSpanProcessor(traceExporter, {
+      maxQueueSize: 2048,
+      maxExportBatchSize: 512,
+      scheduledDelayMillis: 5000, // Flush every 5 seconds
+      exportTimeoutMillis: 30000,
+    });
     
-    tracerProvider.addSpanProcessor(filteredSpanProcessor);
+    // Add event listeners to the batch span processor
+    // We can't directly add event listeners, but we can override methods
+    const originalOnStart = batchSpanProcessor.onStart.bind(batchSpanProcessor);
+    batchSpanProcessor.onStart = function(span, parentContext) {
+      console.log('Span started:', span.name);
+      originalOnStart(span, parentContext);
+    };
+    
+    const originalOnEnd = batchSpanProcessor.onEnd.bind(batchSpanProcessor);
+    batchSpanProcessor.onEnd = function(span) {
+      console.log('Span ended:', span.name);
+      originalOnEnd(span);
+    };
+    
+    // Add the batch span processor directly without custom filtering
+    // We'll handle filtering at the exporter level or use environment variables
+    tracerProvider.addSpanProcessor(batchSpanProcessor);
+    
     tracerProvider.register();
     
     // Create logger provider
     loggerProvider = new LoggerProvider({ resource });
     
-    // Set up log exporter
-    const logEndpoint = process.env.NEXT_PUBLIC_OTEL_EXPORTER_OTLP_LOGS_ENDPOINT || 'https://otlp.nr-data.net/v1/logs';
+    // Set up log exporter to send to OTel Collector
+    // For browser-based frontend, we need to use localhost instead of docker internal hostname
+    const logEndpoint = process.env.NEXT_PUBLIC_OTEL_EXPORTER_OTLP_LOGS_ENDPOINT?.replace('otel-collector', 'localhost') || 'http://localhost:4318/v1/logs';
+    console.log('Log endpoint:', logEndpoint);
     const logExporter = new OTLPLogExporter({
       url: logEndpoint,
-      headers: traceHeaders, // Use same headers for logs
     });
+    
+    // Add debugging to log exporter
+    const originalLogExport = logExporter.export.bind(logExporter);
+    logExporter.export = function(logRecords, resultCallback) {
+      console.log('Attempting to export logs:', logRecords.length);
+      console.log('Log endpoint being used:', logEndpoint);
+      
+      originalLogExport(logRecords, (result) => {
+        console.log('Log export result:', result);
+        if (result.code !== 0) {
+          console.error('Log export failed with error:', result.error);
+        } else {
+          console.log('Log export successful');
+        }
+        resultCallback(result);
+      });
+    };
     
     loggerProvider.addLogRecordProcessor(new SimpleLogRecordProcessor(logExporter));
     
     // Create meter provider
     meterProvider = new MeterProvider({ resource });
     
-    // Set up metric exporter
-    const metricEndpoint = process.env.NEXT_PUBLIC_OTEL_EXPORTER_OTLP_METRICS_ENDPOINT || 'https://otlp.nr-data.net/v1/metrics';
+    // Set up metric exporter to send to OTel Collector
+    // For browser-based frontend, we need to use localhost instead of docker internal hostname
+    const metricEndpoint = process.env.NEXT_PUBLIC_OTEL_EXPORTER_OTLP_METRICS_ENDPOINT?.replace('otel-collector', 'localhost') || 'http://localhost:4318/v1/metrics';
+    console.log('Metric endpoint:', metricEndpoint);
     const metricExporter = new OTLPMetricExporter({
       url: metricEndpoint,
-      headers: traceHeaders, // Use same headers for metrics
     });
+    
+    // Add debugging to metric exporter
+    const originalMetricExport = metricExporter.export.bind(metricExporter);
+    metricExporter.export = function(metrics, resultCallback) {
+      console.log('Attempting to export metrics:', metrics);
+      console.log('Metric endpoint being used:', metricEndpoint);
+      
+      originalMetricExport(metrics, (result) => {
+        console.log('Metric export result:', result);
+        if (result.code !== 0) {
+          console.error('Metric export failed with error:', result.error);
+        } else {
+          console.log('Metric export successful');
+        }
+        resultCallback(result);
+      });
+    };
     
     meterProvider.addMetricReader(new PeriodicExportingMetricReader({
       exporter: metricExporter,
-      exportIntervalMillis: 60000, // Export every 60 seconds
+      exportIntervalMillis: 30000, // Export every 30 seconds (reduced from 60 seconds)
     }));
-    
-    // Register instrumentations
-    registerInstrumentations({
-      tracerProvider,
-      loggerProvider,
-      meterProvider,
-      instrumentations: [
-        // Removed auto-instrumentations since the package is not installed
-      ],
-    });
     
     isInitialized = true;
     console.log('OpenTelemetry initialized successfully');
+    
+    // Let's also create a simple test log and metric to verify export
+    setTimeout(() => {
+      if (loggerProvider) {
+        const logger = loggerProvider.getLogger('frontend-test');
+        logger.emit({
+          severityText: 'INFO',
+          body: 'Frontend OpenTelemetry initialized successfully',
+          timestamp: new Date().getTime(),
+        });
+        console.log('Test log emitted');
+      }
+      
+      if (meterProvider) {
+        const meter = meterProvider.getMeter('frontend-test');
+        const counter = meter.createCounter('frontend.init.counter', {
+          description: 'Count of frontend initializations',
+        });
+        counter.add(1, { 'service': 'saas-platform-frontend' });
+        console.log('Test metric emitted');
+      }
+    }, 1000);
   } catch (error) {
     console.error('Failed to initialize OpenTelemetry:', error);
   }
 }
 
 export function getTracer(name: string) {
+  ensureOpentelemetryIsInitialized();
   if (!tracerProvider) {
+    console.warn('Tracer provider not available');
     return null;
   }
   return tracerProvider.getTracer(name);
 }
 
 export function getMeter(name: string) {
+  ensureOpentelemetryIsInitialized();
   if (!meterProvider) {
+    console.warn('Meter provider not available');
     return null;
   }
   return meterProvider.getMeter(name);
@@ -228,7 +279,9 @@ export function getMeter(name: string) {
 
 // Add getLogger function for logging
 export function getLogger(name: string) {
+  ensureOpentelemetryIsInitialized();
   if (!loggerProvider) {
+    console.warn('Logger provider not available');
     return null;
   }
   return loggerProvider.getLogger(name);
@@ -237,8 +290,10 @@ export function getLogger(name: string) {
 // Export providers for direct access in helper functions
 export { tracerProvider, loggerProvider, meterProvider };
 
-// Add explicit tracing to fetch requests
+// Update tracedFetch to use lazy initialization
 export async function tracedFetch<T>(url: string, options: RequestInit = {}, spanName: string = 'http-request'): Promise<T> {
+  ensureOpentelemetryIsInitialized();
+  
   if (!tracerProvider) {
     // If OpenTelemetry is not initialized, just do a regular fetch
     const response = await fetch(url, options);
@@ -292,4 +347,40 @@ export async function tracedFetch<T>(url: string, options: RequestInit = {}, spa
   } finally {
     span.end();
   }
+}
+
+// Update emitLog to use lazy initialization
+export function emitLog(message: string, level: string = 'INFO') {
+  ensureOpentelemetryIsInitialized();
+  
+  if (!loggerProvider) {
+    console.log('Logger provider not initialized, falling back to console');
+    console.log(`[${level}] ${message}`);
+    return;
+  }
+  
+  const logger = loggerProvider.getLogger('manual-logger');
+  logger.emit({
+    severityText: level,
+    body: message,
+    timestamp: new Date().getTime(),
+  });
+  console.log(`Log emitted: [${level}] ${message}`);
+}
+
+// Update emitMetric to use lazy initialization
+export function emitMetric(name: string, value: number, attributes: Record<string, string> = {}) {
+  ensureOpentelemetryIsInitialized();
+  
+  if (!meterProvider) {
+    console.log('Meter provider not initialized, skipping metric emission');
+    return;
+  }
+  
+  const meter = meterProvider.getMeter('manual-meter');
+  const counter = meter.createCounter(name, {
+    description: `Manual metric: ${name}`,
+  });
+  counter.add(value, attributes);
+  console.log(`Metric emitted: ${name} = ${value}`, attributes);
 }

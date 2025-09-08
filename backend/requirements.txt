@@ -22,11 +22,13 @@ redis==5.2.1
 # JSON Web Token support (for future auth)
 PyJWT==2.10.1
 
-# OpenTelemetry dependencies for observability
+# HTTP client library (required by OpenTelemetry requests instrumentation)
+requests==2.32.3
+
+# OpenTelemetry dependencies for observability (manual setup)
 opentelemetry-api==1.28.2
 opentelemetry-sdk==1.28.2
-opentelemetry-exporter-otlp==1.28.2
+opentelemetry-exporter-otlp-proto-grpc==1.28.2
 opentelemetry-instrumentation-fastapi==0.49b2
 opentelemetry-instrumentation-requests==0.49b2
 opentelemetry-instrumentation-logging==0.49b2
-opentelemetry-instrumentation-asgi==0.49b2

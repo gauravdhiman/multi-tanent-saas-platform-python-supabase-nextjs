@@ -1,186 +1,203 @@
 """
 OpenTelemetry configuration for the application.
+This module provides helper functions for manual instrumentation
+when not using auto-instrumentation.
+
+This implementation uses manual OpenTelemetry setup instead of auto-instrumentation
+for better control, reliability, and performance. All three telemetry signals
+(traces, logs, and metrics) are configured explicitly.
+
+For more information about the manual setup approach, see:
+docs/OPENTELEMETRY_MANUAL_SETUP.md
 """
 
 import os
 import logging
 from opentelemetry import trace, metrics
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.instrumentation.requests import RequestsInstrumentor
-from opentelemetry.instrumentation.logging import LoggingInstrumentor
-from opentelemetry._logs import set_logger_provider
+from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
+from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
-from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
-from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
+from opentelemetry._logs import set_logger_provider
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+from config import settings
 
 # Enable OpenTelemetry debug logging
 logging.getLogger('opentelemetry').setLevel(logging.DEBUG)
 
-def parse_headers(headers_str: str) -> dict:
+def get_resource(app_name: str = "saas-platform"):
     """
-    Parse headers string into a dictionary.
-    
-    Supports both "key=value" format and JSON format.
-    """
-    if not headers_str:
-        return {}
-    
-    try:
-        # Try JSON format first
-        import json
-        return json.loads(headers_str)
-    except json.JSONDecodeError:
-        pass
-    
-    try:
-        # Try key=value format
-        if "=" in headers_str:
-            key, value = headers_str.split("=", 1)
-            return {key.strip(): value.strip()}
-    except Exception:
-        pass
-    
-    # If all else fails, return empty dict
-    logging.warning(f"Failed to parse headers: {headers_str}")
-    return {}
-
-def setup_opentelemetry(app_name: str = "saas-platform"):
-    """
-    Set up OpenTelemetry tracing, logging, and metrics instrumentation.
+    Create a resource to represent the service.
     
     Args:
         app_name: Name of the application for telemetry
     """
-    logging.info("Setting up OpenTelemetry")
-    
-    # Log environment variables for debugging
-    logging.info(f"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: {os.getenv('OTEL_EXPORTER_OTLP_TRACES_ENDPOINT')}")
-    logging.info(f"OTEL_EXPORTER_OTLP_TRACES_HEADERS: {os.getenv('OTEL_EXPORTER_OTLP_TRACES_HEADERS')}")
-    logging.info(f"OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: {os.getenv('OTEL_EXPORTER_OTLP_METRICS_ENDPOINT')}")
-    logging.info(f"OTEL_EXPORTER_OTLP_METRICS_HEADERS: {os.getenv('OTEL_EXPORTER_OTLP_METRICS_HEADERS')}")
-    logging.info(f"OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: {os.getenv('OTEL_EXPORTER_OTLP_LOGS_ENDPOINT')}")
-    logging.info(f"OTEL_EXPORTER_OTLP_LOGS_HEADERS: {os.getenv('OTEL_EXPORTER_OTLP_LOGS_HEADERS')}")
-    
-    # Create a resource to represent the service
-    resource = Resource.create({
+    return Resource.create({
         "service.name": os.getenv("OTEL_SERVICE_NAME", app_name),
         "service.version": os.getenv("OTEL_SERVICE_VERSION", "1.0.0"),
         "environment": os.getenv("OTEL_ENVIRONMENT", "development")
     })
+
+def setup_opentelemetry():
+    """
+    Sets up OpenTelemetry tracing, logging, and metrics providers manually.
     
-    # Set up tracing
-    tracer_provider = TracerProvider(resource=resource)
+    This function should be called once at application startup to configure
+    all OpenTelemetry components without relying on auto-instrumentation.
     
-    # Set up logging
-    logger_provider = LoggerProvider(resource=resource)
-    set_logger_provider(logger_provider)
+    The manual setup provides:
+    - Better control over configuration
+    - More reliable behavior across environments
+    - Better performance than auto-instrumentation
+    - Easier debugging and troubleshooting
     
-    # Set up metrics
-    try:
-        # Get metrics endpoint and headers
-        metrics_endpoint = os.getenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "https://otlp.nr-data.net/v1/metrics")
-        metrics_headers_str = os.getenv("OTEL_EXPORTER_OTLP_METRICS_HEADERS", "")
-        metrics_headers = parse_headers(metrics_headers_str)
-        
-        logging.info(f"Setting up metrics exporter with endpoint: {metrics_endpoint}")
-        logging.info(f"Metrics headers: {metrics_headers}")
-        
-        otlp_metric_exporter = OTLPMetricExporter(
-            endpoint=metrics_endpoint,
-            headers=metrics_headers,
-            timeout=10
-        )
-        metric_reader = PeriodicExportingMetricReader(otlp_metric_exporter)
-        meter_provider = MeterProvider(resource=resource, metric_readers=[metric_reader])
-        metrics.set_meter_provider(meter_provider)
-        logging.info("Metrics exporter set up successfully")
-    except Exception as e:
-        logging.error(f"Failed to set up metrics: {e}")
-        logging.exception(e)
-    
-    # Set up OTLP exporters if endpoint is configured
-    traces_endpoint = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
-    if traces_endpoint:
-        logging.info(f"Setting up OTLP trace exporter with endpoint: {traces_endpoint}")
-        
-        # Get trace headers
-        headers_str = os.getenv("OTEL_EXPORTER_OTLP_TRACES_HEADERS", "")
-        logging.info(f"OTLP Trace Headers string: {headers_str}")
-        
-        headers = parse_headers(headers_str)
-        logging.info(f"Parsed OTLP Trace Headers: {headers}")
-        
+    For detailed information about the manual setup approach, see:
+    docs/OPENTELEMETRY_MANUAL_SETUP.md
+    """
+    if settings.otel_enabled:
+        resource = Resource.create({
+            "service.name": settings.otel_service_name,
+            "service.version": "1.0.0",
+            "environment": settings.environment
+        })
+
+        # --- Configure the TracerProvider for Traces ---
         try:
-            # Set up trace exporter
-            logging.info("Setting up trace exporter")
-            otlp_trace_exporter = OTLPSpanExporter(
-                endpoint=traces_endpoint,
-                headers=headers,
-                timeout=10
-            )
-            tracer_provider.add_span_processor(BatchSpanProcessor(otlp_trace_exporter))
-            logging.info("Trace exporter set up successfully")
+            tracer_provider = TracerProvider(resource=resource)
+            span_exporter = OTLPSpanExporter(insecure=settings.otel_exporter_otlp_traces_insecure)
+            span_processor = BatchSpanProcessor(span_exporter)
+            tracer_provider.add_span_processor(span_processor)
+            trace.set_tracer_provider(tracer_provider)
+            logging.info("Explicitly configured OpenTelemetry Tracer provider.")
+            print("Explicitly configured OpenTelemetry Tracer provider.")  # Print to stdout for visibility
         except Exception as e:
-            logging.error(f"Failed to set up trace exporter: {e}")
-            logging.exception(e)
-        
+            logging.error(f"Error setting up OpenTelemetry Tracer provider: {e}")
+            print(f"Error setting up OpenTelemetry Tracer provider: {e}")  # Print to stdout for visibility
+
+        # --- Configure the LoggerProvider for Logs ---
         try:
-            # Set up log exporter
-            logging.info("Setting up log exporter")
-            logs_endpoint = os.getenv("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT", "https://otlp.nr-data.net/v1/logs")
-            logs_headers_str = os.getenv("OTEL_EXPORTER_OTLP_LOGS_HEADERS", "")
-            logs_headers = parse_headers(logs_headers_str)
+            log_exporter = OTLPLogExporter(insecure=settings.otel_exporter_otlp_logs_insecure)
+            logger_provider = LoggerProvider(resource=resource)
+            logger_provider.add_log_record_processor(BatchLogRecordProcessor(log_exporter))
+            set_logger_provider(logger_provider)
             
-            logging.info(f"Log endpoint: {logs_endpoint}")
-            logging.info(f"Log headers: {logs_headers}")
+            # Attach the OpenTelemetry handler to the root logger of Python's logging module.
+            # This ensures that any logs created with logging.info(), logging.error(), etc.
+            # are captured and exported by OpenTelemetry.
+            handler = LoggingHandler(level=logging.INFO, logger_provider=logger_provider)
             
-            otlp_log_exporter = OTLPLogExporter(
-                endpoint=logs_endpoint,
-                headers=logs_headers,
-                timeout=10
-            )
-            logger_provider.add_log_record_processor(BatchLogRecordProcessor(otlp_log_exporter))
-            logging.info("Log exporter set up successfully")
+            # Set the formatter for the OpenTelemetry handler to match our desired format
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            handler.setFormatter(formatter)
+            
+            logging.getLogger().addHandler(handler)
+            logging.info("Explicitly configured OpenTelemetry Logger provider.")
+            print("Explicitly configured OpenTelemetry Logger provider.")  # Print to stdout for visibility
         except Exception as e:
-            logging.error(f"Failed to set up log exporter: {e}")
-            logging.exception(e)
+            logging.error(f"Error setting up OpenTelemetry Logger provider: {e}")
+            print(f"Error setting up OpenTelemetry Logger provider: {e}")  # Print to stdout for visibility
+
+        # --- Configure the MeterProvider for Metrics ---
+        try:
+            metric_exporter = OTLPMetricExporter(insecure=settings.otel_exporter_otlp_metrics_insecure)
+            metric_reader = PeriodicExportingMetricReader(metric_exporter)
+            meter_provider = MeterProvider(resource=resource, metric_readers=[metric_reader])
+            metrics.set_meter_provider(meter_provider)
+            logging.info("Explicitly configured OpenTelemetry Meter provider.")
+            print("Explicitly configured OpenTelemetry Meter provider.")  # Print to stdout for visibility
+        except Exception as e:
+            logging.error(f"Error setting up OpenTelemetry Meter provider: {e}")
+            print(f"Error setting up OpenTelemetry Meter provider: {e}")  # Print to stdout for visibility
+
+        logging.info("OpenTelemetry setup completed.")
+        print("OpenTelemetry setup completed.")  # Print to stdout for visibility
+
+def setup_manual_opentelemetry(app_name: str = "saas-platform"):
+    """
+    Set up OpenTelemetry tracing, logging, and metrics instrumentation manually.
+    This is the main setup function that should be used instead of auto-instrumentation.
     
-    # Set the global providers
-    trace.set_tracer_provider(tracer_provider)
-    set_logger_provider(logger_provider)
+    Args:
+        app_name: Name of the application for telemetry
+        
+    This function represents the entry point for manual OpenTelemetry configuration.
+    It replaces the need for the opentelemetry-instrument command and provides
+    more predictable and controllable instrumentation.
     
-    # Enable instrumentation
-    try:
-        LoggingInstrumentor().instrument(set_logging_format=True)
-    except Exception as e:
-        logging.error(f"Failed to instrument logging: {e}")
-        logging.exception(e)
+    For detailed information about the manual setup approach, see:
+    docs/OPENTELEMETRY_MANUAL_SETUP.md
+    """
+    logging.info("Setting up manual OpenTelemetry")
     
-    logging.info("OpenTelemetry setup complete")
-    return tracer_provider, logger_provider, metrics.get_meter_provider()
+    # This function now just calls the main setup function
+    setup_opentelemetry()
+    
+    logging.info("Manual OpenTelemetry setup complete")
 
 def instrument_fastapi(app):
     """
     Instrument a FastAPI application with OpenTelemetry.
+    This should only be used when not using auto-instrumentation.
     
     Args:
         app: FastAPI application instance
+        
+    Note: This function is kept for reference but should not be used when 
+    auto-instrumentation is enabled as it will cause conflicts.
     """
     try:
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+        from opentelemetry.instrumentation.requests import RequestsInstrumentor
+        
         # Define URLs to exclude from instrumentation (health check endpoints)
         excluded_urls = "/health,/health/ready,/health/live"
         FastAPIInstrumentor.instrument_app(app, excluded_urls=excluded_urls)
         RequestsInstrumentor().instrument()
+        logging.info("Manual FastAPI instrumentation completed")
     except Exception as e:
-        logging.error(f"Failed to instrument FastAPI app: {e}")
+        logging.error(f"Failed to manually instrument FastAPI app: {e}")
         logging.exception(e)
+
+# Add a function to manually emit logs for testing
+def emit_log(message: str, level: str = "INFO", attributes: dict = None):
+    """
+    Emit a log message. When using auto-instrumentation, this will use
+    the standard Python logging which should be captured by the 
+    OpenTelemetry logging instrumentation.
+    
+    Args:
+        message: Log message
+        level: Log level (INFO, ERROR, DEBUG, etc.)
+        attributes: Additional attributes to include with the log
+    """
+    # When using auto-instrumentation, we can just use standard Python logging
+    # The OpenTelemetry logging instrumentation should capture these
+    logging.info(f"Log emitted: [{level}] {message}")
+
+# Add a function to manually emit metrics for testing
+def emit_metric(name: str, value: float, attributes: dict = None):
+    """
+    Emit a metric through OpenTelemetry.
+    
+    Args:
+        name: Metric name
+        value: Metric value
+        attributes: Additional attributes to include with the metric
+    """
+    try:
+        # Get the meter provider (should be set up by auto-instrumentation)
+        meter = metrics.get_meter("backend-test")
+        counter = meter.create_counter(name, description=f"Manual metric: {name}")
+        counter.add(value, attributes or {})
+        logging.info(f"Metric emitted: {name} = {value}")
+    except Exception as e:
+        logging.error(f"Failed to emit metric: {e}")
 
 # Global providers
 tracer_provider = None

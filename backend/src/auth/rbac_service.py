@@ -965,6 +965,7 @@ class RBACService:
         current_span.set_attribute("user.id", str(user_id))
         if organization_id:
             current_span.set_attribute("organization.id", str(organization_id))
+        
         try:
             # Get user roles
             roles, error = await self.get_roles_for_user(user_id, organization_id)
@@ -992,6 +993,7 @@ class RBACService:
                     permissions=permissions
                 ))
             
+            current_span.set_attribute("roles_with_permissions.count", len(roles_with_permissions))
             current_span.set_status(trace.Status(trace.StatusCode.OK))
             return roles_with_permissions, None
             
@@ -999,11 +1001,11 @@ class RBACService:
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "get_user_roles_with_permissions", "error": "exception"})
             return [], str(e)
-    
-    @tracer.start_as_current_span("rbac.check_permission")
-    async def check_permission(self, user_id: UUID, permission_name: str, organization_id: Optional[UUID] = None) -> Tuple[bool, Optional[str]]:
+
+    @tracer.start_as_current_span("rbac.user_has_permission")
+    async def user_has_permission(self, user_id: UUID, permission_name: str, organization_id: Optional[UUID] = None) -> Tuple[bool, Optional[str]]:
         """Check if a user has a specific permission."""
-        rbac_operations_counter.add(1, {"operation": "check_permission", "entity": "permission_check"})
+        rbac_operations_counter.add(1, {"operation": "user_has_permission", "entity": "permission_check"})
         
         # Set attribute on current span
         current_span = trace.get_current_span()
@@ -1011,33 +1013,34 @@ class RBACService:
         current_span.set_attribute("permission.name", permission_name)
         if organization_id:
             current_span.set_attribute("organization.id", str(organization_id))
+        
         try:
+            # First get the permission by name
+            response = self.supabase.table("permissions").select("*").eq("name", permission_name).execute()
+            
+            if not response.data:
+                current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Permission not found"))
+                rbac_errors_counter.add(1, {"operation": "user_has_permission", "error": "permission_not_found"})
+                return False, "Permission not found"
+            
+            permission_dict = response.data[0]
+            permission_id = permission_dict["id"]
+            
             # Get user roles
             roles, error = await self.get_roles_for_user(user_id, organization_id)
             if error:
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, error))
-                rbac_errors_counter.add(1, {"operation": "check_permission", "error": "get_roles_failed"})
+                rbac_errors_counter.add(1, {"operation": "user_has_permission", "error": "get_roles_failed"})
                 return False, error
-            
-            # Get permission by name
-            permission, error = await self.get_permission_by_name(permission_name)
-            if error:
-                current_span.set_status(trace.Status(trace.StatusCode.ERROR, error))
-                rbac_errors_counter.add(1, {"operation": "check_permission", "error": "get_permission_failed"})
-                return False, error
-            
-            if not permission:
-                current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Permission not found"))
-                rbac_errors_counter.add(1, {"operation": "check_permission", "error": "permission_not_found"})
-                return False, "Permission not found"
             
             # Check if any role has this permission
             for role in roles:
-                permissions, error = await self.get_permissions_for_role(role.id)
-                if error:
-                    continue  # Skip this role if we can't get its permissions
+                response = self.supabase.table("role_permissions").select("*").match({
+                    "role_id": str(role.id),
+                    "permission_id": permission_id
+                }).execute()
                 
-                if any(perm.id == permission.id for perm in permissions):
+                if response.data:
                     current_span.set_status(trace.Status(trace.StatusCode.OK))
                     return True, None
             
@@ -1046,9 +1049,56 @@ class RBACService:
             
         except Exception as e:
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
-            rbac_errors_counter.add(1, {"operation": "check_permission", "error": "exception"})
+            rbac_errors_counter.add(1, {"operation": "user_has_permission", "error": "exception"})
             return False, str(e)
-    
+
+    @tracer.start_as_current_span("rbac.user_has_role")
+    async def user_has_role(self, user_id: UUID, role_name: str, organization_id: Optional[UUID] = None) -> Tuple[bool, Optional[str]]:
+        """Check if a user has a specific role."""
+        rbac_operations_counter.add(1, {"operation": "user_has_role", "entity": "role_check"})
+        
+        # Set attribute on current span
+        current_span = trace.get_current_span()
+        current_span.set_attribute("user.id", str(user_id))
+        current_span.set_attribute("role.name", role_name)
+        if organization_id:
+            current_span.set_attribute("organization.id", str(organization_id))
+        
+        try:
+            # First get the role by name
+            response = self.supabase.table("roles").select("*").eq("name", role_name).execute()
+            
+            if not response.data:
+                current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Role not found"))
+                rbac_errors_counter.add(1, {"operation": "user_has_role", "error": "role_not_found"})
+                return False, "Role not found"
+            
+            role_dict = response.data[0]
+            role_id = role_dict["id"]
+            
+            # Check if user has this role
+            query = self.supabase.table("user_roles").select("*").match({
+                "user_id": str(user_id),
+                "role_id": role_id
+            })
+            
+            if organization_id:
+                query = query.eq("organization_id", str(organization_id))
+            else:
+                query = query.is_("organization_id", "null")
+            
+            response = query.execute()
+            
+            has_role = len(response.data) > 0
+            
+            current_span.set_status(trace.Status(trace.StatusCode.OK))
+            return has_role, None
+            
+        except Exception as e:
+            current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
+            rbac_errors_counter.add(1, {"operation": "user_has_role", "error": "exception"})
+            return False, str(e)
+
     @tracer.start_as_current_span("rbac.get_users_with_role")
     async def get_users_with_role(self, role_id: UUID, organization_id: Optional[UUID] = None) -> Tuple[List[UserWithRoles], Optional[str]]:
         """Get all users with a specific role."""

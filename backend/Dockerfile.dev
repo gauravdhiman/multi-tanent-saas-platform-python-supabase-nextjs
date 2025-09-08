@@ -26,8 +26,5 @@ COPY . .
 # Expose port
 EXPOSE 8000
 
-# Set OpenTelemetry configuration file
-ENV OTEL_CONFIG_FILE=/app/opentelemetry-config.yaml
-
-# Run the application with hot reload and OpenTelemetry instrumentation
-CMD ["opentelemetry-instrument", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Run the application with hot reload (without auto-instrumentation)
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

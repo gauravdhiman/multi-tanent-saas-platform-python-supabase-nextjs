@@ -2,10 +2,14 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
-import { initOpenTelemetry } from "@/lib/opentelemetry";
+import { ensureOpentelemetryIsInitialized, emitLog, emitMetric } from "@/lib/opentelemetry";
 
 // Initialize OpenTelemetry
-initOpenTelemetry();
+ensureOpentelemetryIsInitialized();
+
+// Emit a log and metric when the app starts
+emitLog("Frontend application started", "INFO");
+emitMetric("frontend.app.start", 1, { "page": "layout" });
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
