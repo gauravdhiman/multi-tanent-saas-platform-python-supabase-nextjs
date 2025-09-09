@@ -14,7 +14,6 @@ from config import settings
 from config import supabase_config
 from src.auth.routes import auth_router
 from src.auth.rbac_routes import rbac_router
-from src.auth.example_routes import example_router
 
 # Import the OpenTelemetry setup function first to ensure proper logging configuration
 from config.opentelemetry import emit_log, emit_metric, setup_manual_opentelemetry, logging_level
@@ -82,8 +81,6 @@ def create_app() -> FastAPI:
     # Include RBAC routes
     app.include_router(rbac_router)
     
-    # Include example routes (for demonstration)
-    app.include_router(example_router)
     
     return app
 
