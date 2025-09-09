@@ -28,8 +28,10 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 from config import settings
 
+logging_level = logging.INFO
+
 # Enable OpenTelemetry debug logging
-logging.getLogger('opentelemetry').setLevel(logging.DEBUG)
+logging.getLogger('opentelemetry').setLevel(logging_level)
 
 def get_resource(app_name: str = "saas-platform"):
     """
@@ -90,7 +92,7 @@ def setup_opentelemetry():
             # Attach the OpenTelemetry handler to the root logger of Python's logging module.
             # This ensures that any logs created with logging.info(), logging.error(), etc.
             # are captured and exported by OpenTelemetry.
-            handler = LoggingHandler(level=logging.INFO, logger_provider=logger_provider)
+            handler = LoggingHandler(level=logging_level, logger_provider=logger_provider)
             
             # Set the formatter for the OpenTelemetry handler to match our desired format
             formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')

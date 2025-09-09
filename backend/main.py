@@ -17,13 +17,13 @@ from src.auth.rbac_routes import rbac_router
 from src.auth.example_routes import example_router
 
 # Import the OpenTelemetry setup function first to ensure proper logging configuration
-from config.opentelemetry import emit_log, emit_metric, setup_manual_opentelemetry
+from config.opentelemetry import emit_log, emit_metric, setup_manual_opentelemetry, logging_level
 
 # Configure logging to ensure it outputs to stdout with proper formatting
 # The OpenTelemetry logging handler is added in the setup_manual_opentelemetry function
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging_level,
+    format='%(name)s - %(levelname)s - %(message)s'
 )
 
 # Set up OpenTelemetry explicitly to ensure logger and meter providers are available

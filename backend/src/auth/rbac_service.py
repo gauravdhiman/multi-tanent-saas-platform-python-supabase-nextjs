@@ -2,6 +2,7 @@
 Role-Based Access Control (RBAC) service for managing roles, permissions, and access control.
 """
 
+import logging
 from typing import List, Optional, Tuple, Dict, Any
 from uuid import UUID
 import asyncio
@@ -15,6 +16,8 @@ from .rbac_models import (
     UserRole, UserRoleCreate, UserRoleUpdate,
     RoleWithPermissions, UserWithRoles
 )
+
+logger = logging.getLogger(__name__)
 
 # Get tracer for this module
 tracer = trace.get_tracer(__name__)
@@ -43,6 +46,7 @@ class RBACService:
     def supabase(self):
         """Get Supabase client, raise error if not configured."""
         if not self.supabase_config.is_configured():
+            logger.error("Supabase is not configured. Please set SUPABASE_URL and SUPABASE_SERVICE_KEY.")
             raise ValueError("Supabase is not configured. Please set SUPABASE_URL and SUPABASE_SERVICE_KEY.")
         return self.supabase_config.client
     
@@ -65,6 +69,7 @@ class RBACService:
             }).execute()
             
             if not response.data:
+                logger.error(f"Failed to create organization: {org_data.name}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Failed to create organization"))
                 rbac_errors_counter.add(1, {"operation": "create_organization", "error": "no_data_returned"})
                 return None, "Failed to create organization"
@@ -84,6 +89,7 @@ class RBACService:
             return organization, None
             
         except Exception as e:
+            logger.error(f"Exception while creating organization '{org_data.name}': {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "create_organization", "error": "exception"})
             return None, str(e)
@@ -100,6 +106,7 @@ class RBACService:
             response = self.supabase.table("organizations").select("*").eq("id", str(org_id)).execute()
             
             if not response.data:
+                logger.warning(f"Organization not found: {org_id}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Organization not found"))
                 rbac_errors_counter.add(1, {"operation": "get_organization_by_id", "error": "not_found"})
                 return None, "Organization not found"
@@ -118,6 +125,7 @@ class RBACService:
             return organization, None
             
         except Exception as e:
+            logger.error(f"Exception while getting organization {org_id}: {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "get_organization_by_id", "error": "exception"})
             return None, str(e)
@@ -134,6 +142,7 @@ class RBACService:
             response = self.supabase.table("organizations").select("*").eq("slug", slug).execute()
             
             if not response.data:
+                logger.warning(f"Organization not found with slug: {slug}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Organization not found"))
                 rbac_errors_counter.add(1, {"operation": "get_organization_by_slug", "error": "not_found"})
                 return None, "Organization not found"
@@ -152,6 +161,7 @@ class RBACService:
             return organization, None
             
         except Exception as e:
+            logger.error(f"Exception while getting organization with slug '{slug}': {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "get_organization_by_slug", "error": "exception"})
             return None, str(e)
@@ -179,6 +189,7 @@ class RBACService:
             return organizations, None
             
         except Exception as e:
+            logger.error(f"Exception while getting all organizations: {e}", exc_info=True)
             rbac_errors_counter.add(1, {"operation": "get_all_organizations", "error": "exception"})
             return [], str(e)
     
@@ -209,6 +220,7 @@ class RBACService:
             response = self.supabase.table("organizations").update(update_data).eq("id", str(org_id)).execute()
             
             if not response.data:
+                logger.error(f"Organization not found or update failed: {org_id}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Organization not found or update failed"))
                 rbac_errors_counter.add(1, {"operation": "update_organization", "error": "not_found_or_failed"})
                 return None, "Organization not found or update failed"
@@ -227,6 +239,7 @@ class RBACService:
             return organization, None
             
         except Exception as e:
+            logger.error(f"Exception while updating organization {org_id}: {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "update_organization", "error": "exception"})
             return None, str(e)
@@ -243,6 +256,7 @@ class RBACService:
             response = self.supabase.table("organizations").delete().eq("id", str(org_id)).execute()
             
             if not response.data:
+                logger.warning(f"Organization not found for deletion: {org_id}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Organization not found"))
                 rbac_errors_counter.add(1, {"operation": "delete_organization", "error": "not_found"})
                 return False, "Organization not found"
@@ -251,6 +265,7 @@ class RBACService:
             return True, None
             
         except Exception as e:
+            logger.error(f"Exception while deleting organization {org_id}: {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "delete_organization", "error": "exception"})
             return False, str(e)
@@ -273,6 +288,7 @@ class RBACService:
             }).execute()
             
             if not response.data:
+                logger.error(f"Failed to create role: {role_data.name}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Failed to create role"))
                 rbac_errors_counter.add(1, {"operation": "create_role", "error": "no_data_returned"})
                 return None, "Failed to create role"
@@ -291,6 +307,7 @@ class RBACService:
             return role, None
             
         except Exception as e:
+            logger.error(f"Exception while creating role '{role_data.name}': {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "create_role", "error": "exception"})
             return None, str(e)
@@ -307,6 +324,7 @@ class RBACService:
             response = self.supabase.table("roles").select("*").eq("id", str(role_id)).execute()
             
             if not response.data:
+                logger.warning(f"Role not found: {role_id}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Role not found"))
                 rbac_errors_counter.add(1, {"operation": "get_role_by_id", "error": "not_found"})
                 return None, "Role not found"
@@ -324,6 +342,7 @@ class RBACService:
             return role, None
             
         except Exception as e:
+            logger.error(f"Exception while getting role {role_id}: {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "get_role_by_id", "error": "exception"})
             return None, str(e)
@@ -340,6 +359,7 @@ class RBACService:
             response = self.supabase.table("roles").select("*").eq("name", name).execute()
             
             if not response.data:
+                logger.warning(f"Role not found: {name}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Role not found"))
                 rbac_errors_counter.add(1, {"operation": "get_role_by_name", "error": "not_found"})
                 return None, "Role not found"
@@ -357,6 +377,7 @@ class RBACService:
             return role, None
             
         except Exception as e:
+            logger.error(f"Exception while getting role '{name}': {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "get_role_by_name", "error": "exception"})
             return None, str(e)
@@ -383,6 +404,7 @@ class RBACService:
             return roles, None
             
         except Exception as e:
+            logger.error(f"Exception while getting all roles: {e}", exc_info=True)
             rbac_errors_counter.add(1, {"operation": "get_all_roles", "error": "exception"})
             return [], str(e)
     
@@ -408,6 +430,7 @@ class RBACService:
             response = self.supabase.table("roles").update(update_data).eq("id", str(role_id)).execute()
             
             if not response.data:
+                logger.error(f"Role not found or update failed: {role_id}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Role not found or update failed"))
                 rbac_errors_counter.add(1, {"operation": "update_role", "error": "not_found_or_failed"})
                 return None, "Role not found or update failed"
@@ -425,6 +448,7 @@ class RBACService:
             return role, None
             
         except Exception as e:
+            logger.error(f"Exception while updating role {role_id}: {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "update_role", "error": "exception"})
             return None, str(e)
@@ -448,6 +472,7 @@ class RBACService:
             response = self.supabase.table("roles").delete().eq("id", str(role_id)).execute()
             
             if not response.data:
+                logger.warning(f"Role not found for deletion: {role_id}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Role not found"))
                 rbac_errors_counter.add(1, {"operation": "delete_role", "error": "not_found"})
                 return False, "Role not found"
@@ -456,6 +481,7 @@ class RBACService:
             return True, None
             
         except Exception as e:
+            logger.error(f"Exception while deleting role {role_id}: {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "delete_role", "error": "exception"})
             return False, str(e)
@@ -479,6 +505,7 @@ class RBACService:
             }).execute()
             
             if not response.data:
+                logger.error(f"Failed to create permission: {perm_data.name}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Failed to create permission"))
                 rbac_errors_counter.add(1, {"operation": "create_permission", "error": "no_data_returned"})
                 return None, "Failed to create permission"
@@ -498,6 +525,7 @@ class RBACService:
             return permission, None
             
         except Exception as e:
+            logger.error(f"Exception while creating permission '{perm_data.name}': {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "create_permission", "error": "exception"})
             return None, str(e)
@@ -514,6 +542,7 @@ class RBACService:
             response = self.supabase.table("permissions").select("*").eq("id", str(perm_id)).execute()
             
             if not response.data:
+                logger.warning(f"Permission not found: {perm_id}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Permission not found"))
                 rbac_errors_counter.add(1, {"operation": "get_permission_by_id", "error": "not_found"})
                 return None, "Permission not found"
@@ -532,6 +561,7 @@ class RBACService:
             return permission, None
             
         except Exception as e:
+            logger.error(f"Exception while getting permission {perm_id}: {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "get_permission_by_id", "error": "exception"})
             return None, str(e)
@@ -548,6 +578,7 @@ class RBACService:
             response = self.supabase.table("permissions").select("*").eq("name", name).execute()
             
             if not response.data:
+                logger.warning(f"Permission not found: {name}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Permission not found"))
                 rbac_errors_counter.add(1, {"operation": "get_permission_by_name", "error": "not_found"})
                 return None, "Permission not found"
@@ -566,6 +597,7 @@ class RBACService:
             return permission, None
             
         except Exception as e:
+            logger.error(f"Exception while getting permission '{name}': {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "get_permission_by_name", "error": "exception"})
             return None, str(e)
@@ -593,6 +625,7 @@ class RBACService:
             return permissions, None
             
         except Exception as e:
+            logger.error(f"Exception while getting all permissions: {e}", exc_info=True)
             rbac_errors_counter.add(1, {"operation": "get_all_permissions", "error": "exception"})
             return [], str(e)
     
@@ -622,6 +655,7 @@ class RBACService:
             response = self.supabase.table("permissions").update(update_data).eq("id", str(perm_id)).execute()
             
             if not response.data:
+                logger.error(f"Permission not found or update failed: {perm_id}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Permission not found or update failed"))
                 rbac_errors_counter.add(1, {"operation": "update_permission", "error": "not_found_or_failed"})
                 return None, "Permission not found or update failed"
@@ -640,6 +674,7 @@ class RBACService:
             return permission, None
             
         except Exception as e:
+            logger.error(f"Exception while updating permission {perm_id}: {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "update_permission", "error": "exception"})
             return None, str(e)
@@ -660,6 +695,7 @@ class RBACService:
             response = self.supabase.table("permissions").delete().eq("id", str(perm_id)).execute()
             
             if not response.data:
+                logger.warning(f"Permission not found for deletion: {perm_id}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Permission not found"))
                 rbac_errors_counter.add(1, {"operation": "delete_permission", "error": "not_found"})
                 return False, "Permission not found"
@@ -668,6 +704,7 @@ class RBACService:
             return True, None
             
         except Exception as e:
+            logger.error(f"Exception while deleting permission {perm_id}: {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "delete_permission", "error": "exception"})
             return False, str(e)
@@ -690,6 +727,7 @@ class RBACService:
             }).execute()
             
             if not response.data:
+                logger.error(f"Failed to assign permission {permission_id} to role {role_id}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Failed to assign permission to role"))
                 rbac_errors_counter.add(1, {"operation": "assign_permission_to_role", "error": "no_data_returned"})
                 return None, "Failed to assign permission to role"
@@ -705,6 +743,7 @@ class RBACService:
             return role_permission, None
             
         except Exception as e:
+            logger.error(f"Exception while assigning permission {permission_id} to role {role_id}: {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "assign_permission_to_role", "error": "exception"})
             return None, str(e)
@@ -725,6 +764,7 @@ class RBACService:
             }).execute()
             
             if not response.data:
+                logger.warning(f"Role-permission assignment not found for role {role_id} and permission {permission_id}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Role-permission assignment not found"))
                 rbac_errors_counter.add(1, {"operation": "remove_permission_from_role", "error": "not_found"})
                 return False, "Role-permission assignment not found"
@@ -733,6 +773,7 @@ class RBACService:
             return True, None
             
         except Exception as e:
+            logger.error(f"Exception while removing permission {permission_id} from role {role_id}: {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "remove_permission_from_role", "error": "exception"})
             return False, str(e)
@@ -766,6 +807,7 @@ class RBACService:
             return permissions, None
             
         except Exception as e:
+            logger.error(f"Exception while getting permissions for role {role_id}: {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "get_permissions_for_role", "error": "exception"})
             return [], str(e)
@@ -794,6 +836,7 @@ class RBACService:
             response = self.supabase.table("user_roles").insert(insert_data).execute()
             
             if not response.data:
+                logger.error(f"Failed to assign role {user_role_data.role_id} to user {user_role_data.user_id}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Failed to assign role to user"))
                 rbac_errors_counter.add(1, {"operation": "assign_role_to_user", "error": "no_data_returned"})
                 return None, "Failed to assign role to user"
@@ -811,6 +854,7 @@ class RBACService:
             return user_role, None
             
         except Exception as e:
+            logger.error(f"Exception while assigning role {user_role_data.role_id} to user {user_role_data.user_id}: {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "assign_role_to_user", "error": "exception"})
             return None, str(e)
@@ -837,6 +881,7 @@ class RBACService:
             response = self.supabase.table("user_roles").update(update_data).eq("id", str(user_role_id)).execute()
             
             if not response.data:
+                logger.error(f"User role assignment not found or update failed: {user_role_id}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "User role assignment not found or update failed"))
                 rbac_errors_counter.add(1, {"operation": "update_user_role", "error": "not_found_or_failed"})
                 return None, "User role assignment not found or update failed"
@@ -854,6 +899,7 @@ class RBACService:
             return user_role, None
             
         except Exception as e:
+            logger.error(f"Exception while updating user role {user_role_id}: {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "update_user_role", "error": "exception"})
             return None, str(e)
@@ -870,6 +916,7 @@ class RBACService:
             response = self.supabase.table("user_roles").delete().eq("id", str(user_role_id)).execute()
             
             if not response.data:
+                logger.warning(f"User role assignment not found for deletion: {user_role_id}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "User role assignment not found"))
                 rbac_errors_counter.add(1, {"operation": "remove_role_from_user", "error": "not_found"})
                 return False, "User role assignment not found"
@@ -878,6 +925,7 @@ class RBACService:
             return True, None
             
         except Exception as e:
+            logger.error(f"Exception while removing role from user {user_role_id}: {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "remove_role_from_user", "error": "exception"})
             return False, str(e)
@@ -894,6 +942,7 @@ class RBACService:
             response = self.supabase.table("user_roles").select("*").eq("id", str(user_role_id)).execute()
             
             if not response.data:
+                logger.warning(f"User role assignment not found: {user_role_id}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "User role assignment not found"))
                 rbac_errors_counter.add(1, {"operation": "get_user_role_by_id", "error": "not_found"})
                 return None, "User role assignment not found"
@@ -911,6 +960,7 @@ class RBACService:
             return user_role, None
             
         except Exception as e:
+            logger.error(f"Exception while getting user role {user_role_id}: {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "get_user_role_by_id", "error": "exception"})
             return None, str(e)
@@ -951,6 +1001,7 @@ class RBACService:
             return roles, None
             
         except Exception as e:
+            logger.error(f"Exception while getting roles for user {user_id}: {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "get_roles_for_user", "error": "exception"})
             return [], str(e)
@@ -970,15 +1021,19 @@ class RBACService:
             # Get user roles
             roles, error = await self.get_roles_for_user(user_id, organization_id)
             if error:
+                logger.error(f"Error getting roles for user {user_id}: {error}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, error))
                 rbac_errors_counter.add(1, {"operation": "get_user_roles_with_permissions", "error": "get_roles_failed"})
                 return [], error
+            
+            # No debug logging for successful operations
             
             # Get permissions for each role
             roles_with_permissions = []
             for role in roles:
                 permissions, error = await self.get_permissions_for_role(role.id)
                 if error:
+                    logger.error(f"Error getting permissions for role {role.id} for user {user_id}: {error}")
                     current_span.set_status(trace.Status(trace.StatusCode.ERROR, error))
                     rbac_errors_counter.add(1, {"operation": "get_user_roles_with_permissions", "error": "get_permissions_failed"})
                     return [], error
@@ -998,6 +1053,7 @@ class RBACService:
             return roles_with_permissions, None
             
         except Exception as e:
+            logger.error(f"Exception while getting roles with permissions for user {user_id}: {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "get_user_roles_with_permissions", "error": "exception"})
             return [], str(e)
@@ -1029,6 +1085,7 @@ class RBACService:
             # Get user roles
             roles, error = await self.get_roles_for_user(user_id, organization_id)
             if error:
+                logger.error(f"Error getting roles for user {user_id}: {error}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, error))
                 rbac_errors_counter.add(1, {"operation": "user_has_permission", "error": "get_roles_failed"})
                 return False, error
@@ -1044,10 +1101,12 @@ class RBACService:
                     current_span.set_status(trace.Status(trace.StatusCode.OK))
                     return True, None
             
+            # No info logging for successful operations
             current_span.set_status(trace.Status(trace.StatusCode.OK))
             return False, None
             
         except Exception as e:
+            logger.error(f"Exception while checking permission '{permission_name}' for user {user_id}: {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "user_has_permission", "error": "exception"})
             return False, str(e)
@@ -1109,6 +1168,9 @@ class RBACService:
         current_span.set_attribute("role.id", str(role_id))
         if organization_id:
             current_span.set_attribute("organization.id", str(organization_id))
+        
+        # No info logging for successful operations
+        
         try:
             # Get user roles with user details
             query = self.supabase.table("user_roles").select("*, users(*)").eq("role_id", str(role_id))
@@ -1145,10 +1207,12 @@ class RBACService:
                     user_dict[user_id] = user_with_roles
                     users_with_roles.append(user_with_roles)
             
+            # No info logging for successful operations
             current_span.set_status(trace.Status(trace.StatusCode.OK))
             return users_with_roles, None
             
         except Exception as e:
+            logger.error(f"Exception while getting users with role {role_id}: {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "get_users_with_role", "error": "exception"})
             return [], str(e)
