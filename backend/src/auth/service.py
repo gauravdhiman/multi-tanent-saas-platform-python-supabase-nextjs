@@ -120,21 +120,22 @@ class AuthService:
                 if role_error or not org_admin_role:
                     logging.warning(f"Could not find org_admin role: {role_error}")
                 else:
-                    # Create a default organization for the user
-                    from .rbac_models import OrganizationCreate
+                    # Create a dummy organization for the user with recognizable pattern
+                    from src.organization.models import OrganizationCreate
                     org_data = OrganizationCreate(
                         name=f"{user.email}'s Organization",
-                        description=f"Default organization for {user.email}",
-                        slug=f"{user.id}-org",
+                        description=f"Default organization for {user.email}. Please update with your organization details.",
+                        slug=f"{user.id[:8]}-dummy-org",
                         is_active=True
                     )
                     
-                    organization, org_error = await rbac_service.create_organization(org_data)
+                    from src.organization.service import organization_service
+                    organization, org_error = await organization_service.create_organization(org_data)
                     if org_error or not organization:
                         logging.warning(f"Could not create default organization: {org_error}")
                     else:
                         # Assign org_admin role to user for their organization
-                        from .rbac_models import UserRoleCreate
+                        from src.auth.rbac_models import UserRoleCreate
                         user_role_data = UserRoleCreate(
                             user_id=user.id,
                             role_id=org_admin_role.id,

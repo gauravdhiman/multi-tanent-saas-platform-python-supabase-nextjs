@@ -2,11 +2,13 @@
 
 import React, { useState } from 'react';
 import { ProtectedRoute } from '@/components/auth/protected-route';
+import { OrganizationCheck } from '@/components/auth/organization-check';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { RBACDashboard } from '@/components/dashboard/rbac-dashboard';
 import { PermissionDemo } from '@/components/dashboard/permission-demo';
+import { DummyOrgNotification } from '@/components/dashboard/dummy-org-notification';
 
 export default function DashboardPage() {
   const { user, signOut } = useAuth();
@@ -24,7 +26,8 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <OrganizationCheck>
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
         {/* Header */}
         <header className="bg-white shadow-sm">
           <div className="container mx-auto px-4 py-4 flex justify-between items-center">
@@ -42,8 +45,12 @@ export default function DashboardPage() {
           </div>
         </header>
 
-        {/* Navigation Tabs */}
-        <div className="container mx-auto px-4 py-4">
+        {/* Main Content */}
+        <div className="container mx-auto px-4 py-8">
+          {/* Dummy Organization Notification */}
+          <DummyOrgNotification />
+          
+          {/* Navigation Tabs */}
           <div className="flex space-x-4 border-b">
             <button
               className={`py-2 px-4 font-medium ${activeTab === 'overview' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
@@ -66,8 +73,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="container mx-auto px-4 py-8">
+        {/* Tab Content */}
+        <div className="container mx-auto px-4 pb-8">
           {activeTab === 'overview' ? (
             <div className="bg-white rounded-lg shadow-md p-6">
               <h1 className="text-3xl font-bold text-gray-800 mb-2">Dashboard</h1>
@@ -97,6 +104,7 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+      </OrganizationCheck>
     </ProtectedRoute>
   );
 }

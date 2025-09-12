@@ -1,10 +1,8 @@
-'use client';
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff, Loader2, Mail, User, Lock } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Mail, Lock, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -96,6 +94,7 @@ export function SignUpForm() {
         setError(error.message);
       } else {
         setSuccess('Account created! Please check your email for verification.');
+        // Note: Organization creation will be handled after email verification and sign in
       }
     } catch (error) {
       console.error('Sign up error:', error);
@@ -104,6 +103,7 @@ export function SignUpForm() {
       setIsLoading(null);
     }
   };
+  
   
   const handleGoogleSignUp = async () => {
     setIsLoading('google');
@@ -115,6 +115,7 @@ export function SignUpForm() {
         setIsLoading(null);
       }
       // Note: If successful, OAuth will redirect the user away from this page
+      // The organization creation will happen in the OAuth callback handler
     } catch (error) {
       console.error('Google sign up error:', error);
       setError('An unexpected error occurred. Please try again.');
@@ -132,6 +133,7 @@ export function SignUpForm() {
         setIsLoading(null);
       }
       // Note: If successful, OAuth will redirect the user away from this page
+      // The organization creation will happen in the OAuth callback handler
     } catch (error) {
       console.error('LinkedIn sign up error:', error);
       setError('An unexpected error occurred. Please try again.');

@@ -11,7 +11,6 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
 const signInSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -24,8 +23,7 @@ export function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const authContext = useAuth();
-  const router = useRouter();
+  const { signIn, signInWithOAuth } = useAuth();
 
   const {
     register,
@@ -39,12 +37,11 @@ export function SignInForm() {
     setIsLoading('password');
     setError('');
     try {
-      const result = await authContext.signIn(data);
+      const result = await signIn(data);
       if (result?.error) {
         setError(result.error.message || 'Failed to sign in');
-      } else {
-        router.push('/dashboard');
       }
+      // Success case handled by global route guard
     } catch (error) {
       console.error('Sign in error:', error);
       setError('An unexpected error occurred. Please try again.');
@@ -57,7 +54,7 @@ export function SignInForm() {
     setIsLoading('google');
     setError('');
     try {
-      const result = await authContext.signInWithOAuth('google');
+      const result = await signInWithOAuth('google');
       if (result?.error) {
         setError(result.error.message || 'Failed to sign in with Google');
         setIsLoading(null);
@@ -74,7 +71,7 @@ export function SignInForm() {
     setIsLoading('linkedin_oidc');
     setError('');
     try {
-      const result = await authContext.signInWithOAuth('linkedin_oidc');
+      const result = await signInWithOAuth('linkedin_oidc');
       if (result?.error) {
         setError(result.error.message || 'Failed to sign in with LinkedIn');
         setIsLoading(null);

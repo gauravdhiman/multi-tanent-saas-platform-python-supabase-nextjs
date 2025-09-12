@@ -8,8 +8,7 @@ from uuid import UUID
 import asyncio
 from opentelemetry import trace, metrics
 from config import supabase_config
-from .rbac_models import (
-    Organization, OrganizationCreate, OrganizationUpdate,
+from src.auth.rbac_models import (
     Role, RoleCreate, RoleUpdate,
     Permission, PermissionCreate, PermissionUpdate,
     RolePermission,
@@ -49,226 +48,6 @@ class RBACService:
             logger.error("Supabase is not configured. Please set SUPABASE_URL and SUPABASE_SERVICE_KEY.")
             raise ValueError("Supabase is not configured. Please set SUPABASE_URL and SUPABASE_SERVICE_KEY.")
         return self.supabase_config.client
-    
-    # Organization operations
-    
-    @tracer.start_as_current_span("rbac.create_organization")
-    async def create_organization(self, org_data: OrganizationCreate) -> Tuple[Optional[Organization], Optional[str]]:
-        """Create a new organization."""
-        rbac_operations_counter.add(1, {"operation": "create_organization", "entity": "organization"})
-        
-        # Set attribute on current span
-        current_span = trace.get_current_span()
-        current_span.set_attribute("organization.name", org_data.name)
-        try:
-            response = self.supabase.table("organizations").insert({
-                "name": org_data.name,
-                "description": org_data.description,
-                "slug": org_data.slug,
-                "is_active": org_data.is_active
-            }).execute()
-            
-            if not response.data:
-                logger.error(f"Failed to create organization: {org_data.name}")
-                current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Failed to create organization"))
-                rbac_errors_counter.add(1, {"operation": "create_organization", "error": "no_data_returned"})
-                return None, "Failed to create organization"
-            
-            org_dict = response.data[0]
-            organization = Organization(
-                id=org_dict["id"],
-                name=org_dict["name"],
-                description=org_dict["description"],
-                slug=org_dict["slug"],
-                is_active=org_dict["is_active"],
-                created_at=org_dict["created_at"],
-                updated_at=org_dict["updated_at"]
-            )
-            current_span.set_attribute("organization.id", str(organization.id))
-            current_span.set_status(trace.Status(trace.StatusCode.OK))
-            return organization, None
-            
-        except Exception as e:
-            logger.error(f"Exception while creating organization '{org_data.name}': {e}", exc_info=True)
-            current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
-            rbac_errors_counter.add(1, {"operation": "create_organization", "error": "exception"})
-            return None, str(e)
-    
-    @tracer.start_as_current_span("rbac.get_organization_by_id")
-    async def get_organization_by_id(self, org_id: UUID) -> Tuple[Optional[Organization], Optional[str]]:
-        """Get an organization by its ID."""
-        rbac_operations_counter.add(1, {"operation": "get_organization_by_id", "entity": "organization"})
-        
-        # Set attribute on current span
-        current_span = trace.get_current_span()
-        current_span.set_attribute("organization.id", str(org_id))
-        try:
-            response = self.supabase.table("organizations").select("*").eq("id", str(org_id)).execute()
-            
-            if not response.data:
-                logger.warning(f"Organization not found: {org_id}")
-                current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Organization not found"))
-                rbac_errors_counter.add(1, {"operation": "get_organization_by_id", "error": "not_found"})
-                return None, "Organization not found"
-            
-            org_dict = response.data[0]
-            organization = Organization(
-                id=org_dict["id"],
-                name=org_dict["name"],
-                description=org_dict["description"],
-                slug=org_dict["slug"],
-                is_active=org_dict["is_active"],
-                created_at=org_dict["created_at"],
-                updated_at=org_dict["updated_at"]
-            )
-            current_span.set_status(trace.Status(trace.StatusCode.OK))
-            return organization, None
-            
-        except Exception as e:
-            logger.error(f"Exception while getting organization {org_id}: {e}", exc_info=True)
-            current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
-            rbac_errors_counter.add(1, {"operation": "get_organization_by_id", "error": "exception"})
-            return None, str(e)
-    
-    @tracer.start_as_current_span("rbac.get_organization_by_slug")
-    async def get_organization_by_slug(self, slug: str) -> Tuple[Optional[Organization], Optional[str]]:
-        """Get an organization by its slug."""
-        rbac_operations_counter.add(1, {"operation": "get_organization_by_slug", "entity": "organization"})
-        
-        # Set attribute on current span
-        current_span = trace.get_current_span()
-        current_span.set_attribute("organization.slug", slug)
-        try:
-            response = self.supabase.table("organizations").select("*").eq("slug", slug).execute()
-            
-            if not response.data:
-                logger.warning(f"Organization not found with slug: {slug}")
-                current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Organization not found"))
-                rbac_errors_counter.add(1, {"operation": "get_organization_by_slug", "error": "not_found"})
-                return None, "Organization not found"
-            
-            org_dict = response.data[0]
-            organization = Organization(
-                id=org_dict["id"],
-                name=org_dict["name"],
-                description=org_dict["description"],
-                slug=org_dict["slug"],
-                is_active=org_dict["is_active"],
-                created_at=org_dict["created_at"],
-                updated_at=org_dict["updated_at"]
-            )
-            current_span.set_status(trace.Status(trace.StatusCode.OK))
-            return organization, None
-            
-        except Exception as e:
-            logger.error(f"Exception while getting organization with slug '{slug}': {e}", exc_info=True)
-            current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
-            rbac_errors_counter.add(1, {"operation": "get_organization_by_slug", "error": "exception"})
-            return None, str(e)
-    
-    @tracer.start_as_current_span("rbac.get_all_organizations")
-    async def get_all_organizations(self) -> Tuple[List[Organization], Optional[str]]:
-        """Get all organizations."""
-        rbac_operations_counter.add(1, {"operation": "get_all_organizations", "entity": "organization"})
-        
-        try:
-            response = self.supabase.table("organizations").select("*").execute()
-            
-            organizations = []
-            for org_dict in response.data:
-                organizations.append(Organization(
-                    id=org_dict["id"],
-                    name=org_dict["name"],
-                    description=org_dict["description"],
-                    slug=org_dict["slug"],
-                    is_active=org_dict["is_active"],
-                    created_at=org_dict["created_at"],
-                    updated_at=org_dict["updated_at"]
-                ))
-            
-            return organizations, None
-            
-        except Exception as e:
-            logger.error(f"Exception while getting all organizations: {e}", exc_info=True)
-            rbac_errors_counter.add(1, {"operation": "get_all_organizations", "error": "exception"})
-            return [], str(e)
-    
-    @tracer.start_as_current_span("rbac.update_organization")
-    async def update_organization(self, org_id: UUID, org_data: OrganizationUpdate) -> Tuple[Optional[Organization], Optional[str]]:
-        """Update an organization."""
-        rbac_operations_counter.add(1, {"operation": "update_organization", "entity": "organization"})
-        
-        # Set attribute on current span
-        current_span = trace.get_current_span()
-        current_span.set_attribute("organization.id", str(org_id))
-        try:
-            update_data = {}
-            if org_data.name is not None:
-                update_data["name"] = org_data.name
-                current_span.set_attribute("organization.name.updated", True)
-            if org_data.description is not None:
-                update_data["description"] = org_data.description
-            if org_data.slug is not None:
-                update_data["slug"] = org_data.slug
-                current_span.set_attribute("organization.slug.updated", True)
-            if org_data.is_active is not None:
-                update_data["is_active"] = org_data.is_active
-            
-            if not update_data:
-                return await self.get_organization_by_id(org_id)
-            
-            response = self.supabase.table("organizations").update(update_data).eq("id", str(org_id)).execute()
-            
-            if not response.data:
-                logger.error(f"Organization not found or update failed: {org_id}")
-                current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Organization not found or update failed"))
-                rbac_errors_counter.add(1, {"operation": "update_organization", "error": "not_found_or_failed"})
-                return None, "Organization not found or update failed"
-            
-            org_dict = response.data[0]
-            organization = Organization(
-                id=org_dict["id"],
-                name=org_dict["name"],
-                description=org_dict["description"],
-                slug=org_dict["slug"],
-                is_active=org_dict["is_active"],
-                created_at=org_dict["created_at"],
-                updated_at=org_dict["updated_at"]
-            )
-            current_span.set_status(trace.Status(trace.StatusCode.OK))
-            return organization, None
-            
-        except Exception as e:
-            logger.error(f"Exception while updating organization {org_id}: {e}", exc_info=True)
-            current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
-            rbac_errors_counter.add(1, {"operation": "update_organization", "error": "exception"})
-            return None, str(e)
-    
-    @tracer.start_as_current_span("rbac.delete_organization")
-    async def delete_organization(self, org_id: UUID) -> Tuple[bool, Optional[str]]:
-        """Delete an organization."""
-        rbac_operations_counter.add(1, {"operation": "delete_organization", "entity": "organization"})
-        
-        # Set attribute on current span
-        current_span = trace.get_current_span()
-        current_span.set_attribute("organization.id", str(org_id))
-        try:
-            response = self.supabase.table("organizations").delete().eq("id", str(org_id)).execute()
-            
-            if not response.data:
-                logger.warning(f"Organization not found for deletion: {org_id}")
-                current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Organization not found"))
-                rbac_errors_counter.add(1, {"operation": "delete_organization", "error": "not_found"})
-                return False, "Organization not found"
-            
-            current_span.set_status(trace.Status(trace.StatusCode.OK))
-            return True, None
-            
-        except Exception as e:
-            logger.error(f"Exception while deleting organization {org_id}: {e}", exc_info=True)
-            current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
-            rbac_errors_counter.add(1, {"operation": "delete_organization", "error": "exception"})
-            return False, str(e)
     
     # Role operations
     
@@ -1215,6 +994,45 @@ class RBACService:
             logger.error(f"Exception while getting users with role {role_id}: {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             rbac_errors_counter.add(1, {"operation": "get_users_with_role", "error": "exception"})
+            return [], str(e)
+
+    @tracer.start_as_current_span("rbac.get_organizations_for_user")
+    async def get_organizations_for_user(self, user_id: UUID) -> Tuple[List[Any], Optional[str]]:
+        """Get all organizations for a user."""
+        rbac_operations_counter.add(1, {"operation": "get_organizations_for_user", "entity": "organization"})
+        
+        # Set attribute on current span
+        current_span = trace.get_current_span()
+        current_span.set_attribute("user.id", str(user_id))
+        
+        try:
+            # Get organizations where the user has roles
+            response = self.supabase.table("user_roles").select("organizations(*)").eq("user_id", str(user_id)).not_.is_("organization_id", "null").execute()
+            
+            organizations = []
+            for ur_dict in response.data:
+                if ur_dict.get("organizations"):
+                    org_dict = ur_dict["organizations"]
+                    # Create organization object using the organization service model
+                    from src.organization.models import Organization
+                    organization = Organization(
+                        id=org_dict["id"],
+                        name=org_dict["name"],
+                        description=org_dict["description"],
+                        slug=org_dict["slug"],
+                        is_active=org_dict["is_active"],
+                        created_at=org_dict["created_at"],
+                        updated_at=org_dict["updated_at"]
+                    )
+                    organizations.append(organization)
+            
+            current_span.set_status(trace.Status(trace.StatusCode.OK))
+            return organizations, None
+            
+        except Exception as e:
+            logger.error(f"Exception while getting organizations for user {user_id}: {e}", exc_info=True)
+            current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
+            rbac_errors_counter.add(1, {"operation": "get_organizations_for_user", "error": "exception"})
             return [], str(e)
 
 

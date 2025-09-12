@@ -2,13 +2,13 @@
 Authentication API routes.
 """
 
-from typing import Dict, Any
-from fastapi import APIRouter, HTTPException, status, Depends, Header
+from typing import Dict
+from fastapi import APIRouter, status, Header
 from fastapi.responses import JSONResponse
 from opentelemetry import trace
 
-from .models import SignUpRequest, SignInRequest, AuthResponse, ErrorResponse, UserProfile
-from .service import auth_service
+from src.auth.models import SignUpRequest, SignInRequest, AuthResponse, ErrorResponse, UserProfile
+from src.auth.service import auth_service
 
 # Get tracer for this module
 tracer = trace.get_tracer(__name__)

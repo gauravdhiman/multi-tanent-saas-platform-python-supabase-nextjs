@@ -7,206 +7,21 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, status, Depends
 from opentelemetry import trace
 
-from .rbac_models import (
-    Organization, OrganizationCreate, OrganizationUpdate,
+from src.auth.rbac_models import (
     Role, RoleCreate, RoleUpdate,
     Permission, PermissionCreate, PermissionUpdate,
     RolePermission,
     UserRole, UserRoleCreate, UserRoleUpdate,
     RoleWithPermissions
 )
-from .rbac_service import rbac_service
-from .middleware import get_current_user_id
+from src.auth.rbac_service import rbac_service
+from src.auth.middleware import get_current_user_id
 
 # Get tracer for this module
 tracer = trace.get_tracer(__name__)
 
 # Create RBAC router
 rbac_router = APIRouter(prefix="/rbac", tags=["Role-Based Access Control"])
-
-
-# Organization endpoints
-
-@rbac_router.post("/organizations", response_model=Organization, status_code=status.HTTP_201_CREATED)
-@tracer.start_as_current_span("rbac.routes.create_organization")
-async def create_organization(org_data: OrganizationCreate, current_user_id: UUID = Depends(get_current_user_id)):
-    """Create a new organization (requires platform_admin role)."""
-    current_span = trace.get_current_span()
-    current_span.set_attribute("user.id", str(current_user_id))
-    current_span.set_attribute("organization.name", org_data.name)
-    
-    # Check if user has platform_admin role
-    has_role, error = await rbac_service.user_has_role(current_user_id, "platform_admin")
-    if error or not has_role:
-        current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Only platform administrators can create organizations"))
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only platform administrators can create organizations"
-        )
-    
-    organization, error = await rbac_service.create_organization(org_data)
-    if error:
-        current_span.set_status(trace.Status(trace.StatusCode.ERROR, error))
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error
-        )
-    
-    current_span.set_attribute("organization.id", str(organization.id))
-    current_span.set_status(trace.Status(trace.StatusCode.OK))
-    return organization
-
-
-@rbac_router.get("/organizations/{org_id}", response_model=Organization)
-@tracer.start_as_current_span("rbac.routes.get_organization")
-async def get_organization(org_id: UUID, current_user_id: UUID = Depends(get_current_user_id)):
-    """Get an organization by ID."""
-    current_span = trace.get_current_span()
-    current_span.set_attribute("user.id", str(current_user_id))
-    current_span.set_attribute("organization.id", str(org_id))
-    
-    # Check if user has permission to view organizations
-    has_permission, error = await rbac_service.user_has_permission(current_user_id, "organization:read")
-    if error or not has_permission:
-        current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Insufficient permissions to view organizations"))
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Insufficient permissions to view organizations"
-        )
-    
-    # Additionally check if user belongs to this organization
-    has_role, error = await rbac_service.user_has_role(current_user_id, "platform_admin")
-    if not has_role:
-        has_role, error = await rbac_service.user_has_role(current_user_id, "org_admin", org_id)
-        if not has_role:
-            has_permission, error = await rbac_service.user_has_permission(current_user_id, "organization:read", org_id)
-            if error or not has_permission:
-                current_span.set_status(trace.Status(trace.StatusCode.ERROR, "You don't have access to this organization"))
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You don't have access to this organization"
-                )
-    
-    organization, error = await rbac_service.get_organization_by_id(org_id)
-    if error:
-        current_span.set_status(trace.Status(trace.StatusCode.ERROR, error))
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=error
-        )
-    
-    current_span.set_status(trace.Status(trace.StatusCode.OK))
-    return organization
-
-
-@rbac_router.get("/organizations", response_model=List[Organization])
-@tracer.start_as_current_span("rbac.routes.get_all_organizations")
-async def get_all_organizations(current_user_id: UUID = Depends(get_current_user_id)):
-    """Get all organizations the user has access to."""
-    current_span = trace.get_current_span()
-    current_span.set_attribute("user.id", str(current_user_id))
-    
-    # Check if user has platform_admin role
-    has_role, error = await rbac_service.user_has_role(current_user_id, "platform_admin")
-    if error:
-        current_span.set_status(trace.Status(trace.StatusCode.ERROR, error))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=error
-        )
-    
-    if has_role:
-        # Platform admin can see all organizations
-        organizations, error = await rbac_service.get_all_organizations()
-        if error:
-            current_span.set_status(trace.Status(trace.StatusCode.ERROR, error))
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=error
-            )
-        current_span.set_attribute("organizations.count", len(organizations))
-        current_span.set_status(trace.Status(trace.StatusCode.OK))
-        return organizations
-    else:
-        # Regular users can only see organizations they belong to
-        # This would require a more complex query to find organizations where the user has roles
-        # For now, we'll return an empty list
-        current_span.set_status(trace.Status(trace.StatusCode.OK))
-        return []
-
-
-@rbac_router.put("/organizations/{org_id}", response_model=Organization)
-@tracer.start_as_current_span("rbac.routes.update_organization")
-async def update_organization(org_id: UUID, org_data: OrganizationUpdate, current_user_id: UUID = Depends(get_current_user_id)):
-    """Update an organization (requires platform_admin or org_admin role)."""
-    current_span = trace.get_current_span()
-    current_span.set_attribute("user.id", str(current_user_id))
-    current_span.set_attribute("organization.id", str(org_id))
-    
-    # Check if user has platform_admin or org_admin role for this organization
-    has_role, error = await rbac_service.user_has_role(current_user_id, "platform_admin")
-    if not has_role:
-        has_role, error = await rbac_service.user_has_role(current_user_id, "org_admin", org_id)
-        if error or not has_role:
-            current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Only platform administrators or organization administrators can update organizations"))
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only platform administrators or organization administrators can update organizations"
-            )
-    
-    organization, error = await rbac_service.update_organization(org_id, org_data)
-    if error:
-        if "not found" in error.lower():
-            current_span.set_status(trace.Status(trace.StatusCode.ERROR, error))
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=error
-            )
-        else:
-            current_span.set_status(trace.Status(trace.StatusCode.ERROR, error))
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=error
-            )
-    
-    current_span.set_status(trace.Status(trace.StatusCode.OK))
-    return organization
-
-
-@rbac_router.delete("/organizations/{org_id}", status_code=status.HTTP_204_NO_CONTENT)
-@tracer.start_as_current_span("rbac.routes.delete_organization")
-async def delete_organization(org_id: UUID, current_user_id: UUID = Depends(get_current_user_id)):
-    """Delete an organization (requires platform_admin role)."""
-    current_span = trace.get_current_span()
-    current_span.set_attribute("user.id", str(current_user_id))
-    current_span.set_attribute("organization.id", str(org_id))
-    
-    # Check if user has platform_admin role
-    has_role, error = await rbac_service.user_has_role(current_user_id, "platform_admin")
-    if error or not has_role:
-        current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Only platform administrators can delete organizations"))
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only platform administrators can delete organizations"
-        )
-    
-    success, error = await rbac_service.delete_organization(org_id)
-    if error:
-        if "not found" in error.lower():
-            current_span.set_status(trace.Status(trace.StatusCode.ERROR, error))
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=error
-            )
-        else:
-            current_span.set_status(trace.Status(trace.StatusCode.ERROR, error))
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=error
-            )
-    
-    current_span.set_status(trace.Status(trace.StatusCode.OK))
-    return None
 
 
 # Role endpoints

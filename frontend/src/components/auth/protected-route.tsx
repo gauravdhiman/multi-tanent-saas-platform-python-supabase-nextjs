@@ -20,6 +20,7 @@ export function ProtectedRoute({ children, reverse = false }: ProtectedRouteProp
 
     // If this is a reverse protected route (only for unauthenticated users)
     // and the user is authenticated, redirect to dashboard
+    // Note: The OrganizationCheck component will handle redirecting to org creation if needed
     if (reverse && user) {
       router.replace('/dashboard');
     }

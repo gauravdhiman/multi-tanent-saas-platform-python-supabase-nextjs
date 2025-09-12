@@ -74,6 +74,7 @@ class UserProfile(BaseModel):
     email_confirmed_at: Optional[str] = Field(None, description="Email confirmation timestamp")
     created_at: str = Field(..., description="Account creation timestamp")
     updated_at: str = Field(..., description="Last update timestamp")
+    has_organizations: Optional[bool] = Field(None, description="Whether the user has organizations")
 
 
 class ErrorResponse(BaseModel):

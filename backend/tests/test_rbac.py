@@ -4,8 +4,8 @@ RBAC System Tests
 
 import pytest
 from uuid import uuid4
-from backend.src.auth.rbac_models import RoleCreate, PermissionCreate, UserRoleCreate
-from backend.src.auth.rbac_service import rbac_service
+from src.auth.rbac_models import RoleCreate, PermissionCreate, UserRoleCreate
+from src.auth.rbac_service import rbac_service
 
 
 class TestRBAC:

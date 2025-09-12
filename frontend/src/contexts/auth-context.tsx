@@ -71,14 +71,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session ? transformSupabaseUser(session.user) : null);
       setLoading(false);
       
       // Log auth state changes with OpenTelemetry logger
       logInfo('Auth state changed', {
-        event,
+        event: _event,
         hasSession: !!session,
         userId: session?.user?.id
       });
@@ -161,7 +161,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: `${window.location.origin}/auth/oauth/callback`,
         },
       });
 
