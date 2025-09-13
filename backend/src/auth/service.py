@@ -9,7 +9,8 @@ from opentelemetry import trace, metrics
 
 from config import supabase_config
 from .models import SignUpRequest, SignInRequest, AuthResponse, UserProfile
-from .rbac_service import rbac_service
+from src.rbac.roles.service import role_service
+from src.rbac.user_roles.service import user_role_service
 
 # Get tracer for this module
 tracer = trace.get_tracer(__name__)
@@ -116,7 +117,7 @@ class AuthService:
             # Assign default org_admin role to new user
             try:
                 # Get the org_admin role
-                org_admin_role, role_error = await rbac_service.get_role_by_name("org_admin")
+                org_admin_role, role_error = await role_service.get_role_by_name("org_admin")
                 if role_error or not org_admin_role:
                     logging.warning(f"Could not find org_admin role: {role_error}")
                 else:
@@ -135,14 +136,14 @@ class AuthService:
                         logging.warning(f"Could not create default organization: {org_error}")
                     else:
                         # Assign org_admin role to user for their organization
-                        from src.auth.rbac_models import UserRoleCreate
+                        from src.rbac.user_roles.models import UserRoleCreate
                         user_role_data = UserRoleCreate(
                             user_id=user.id,
                             role_id=org_admin_role.id,
                             organization_id=organization.id
                         )
                         
-                        user_role, role_assign_error = await rbac_service.assign_role_to_user(user_role_data)
+                        user_role, role_assign_error = await user_role_service.assign_role_to_user(user_role_data)
                         if role_assign_error or not user_role:
                             logging.warning(f"Could not assign org_admin role: {role_assign_error}")
                         else:

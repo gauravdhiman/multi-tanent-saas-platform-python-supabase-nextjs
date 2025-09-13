@@ -10,7 +10,8 @@ from opentelemetry import trace
 from src.organization.models import Organization, OrganizationCreate, OrganizationUpdate
 from src.organization.service import organization_service
 from src.auth.middleware import get_current_user_id
-from src.auth.rbac_service import rbac_service
+from src.rbac.roles.service import role_service
+from src.rbac.user_roles.service import user_role_service
 
 # Get tracer for this module
 tracer = trace.get_tracer(__name__)
@@ -28,7 +29,7 @@ async def create_organization(org_data: OrganizationCreate, current_user_id: UUI
     current_span.set_attribute("organization.name", org_data.name)
     
     # Check if user has platform_admin role
-    has_role, error = await rbac_service.user_has_role(current_user_id, "platform_admin")
+    has_role, error = await user_role_service.user_has_role(current_user_id, "platform_admin")
     if error or not has_role:
         current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Only platform administrators can create organizations"))
         raise HTTPException(
@@ -68,21 +69,21 @@ async def create_self_organization(org_data: OrganizationCreate, current_user_id
             )
         
         # Get the org_admin role
-        org_admin_role, role_error = await rbac_service.get_role_by_name("org_admin")
+        org_admin_role, role_error = await role_service.get_role_by_name("org_admin")
         if role_error or not org_admin_role:
             # If org_admin role doesn't exist, we should still return the organization
             # but log the issue
             current_span.add_event("org_admin_role_not_found", {"error": str(role_error)})
         else:
             # Assign org_admin role to user for their organization
-            from src.auth.rbac_models import UserRoleCreate
+            from src.rbac.user_roles.models import UserRoleCreate
             user_role_data = UserRoleCreate(
                 user_id=current_user_id,
                 role_id=org_admin_role.id,
                 organization_id=organization.id
             )
             
-            user_role, role_assign_error = await rbac_service.assign_role_to_user(user_role_data)
+            user_role, role_assign_error = await user_role_service.assign_role_to_user(user_role_data)
             if role_assign_error or not user_role:
                 # Log the error but don't fail the organization creation
                 current_span.add_event("role_assignment_failed", {"error": str(role_assign_error)})
@@ -110,7 +111,7 @@ async def get_organization(org_id: UUID, current_user_id: UUID = Depends(get_cur
     current_span.set_attribute("organization.id", str(org_id))
     
     # Check if user has permission to view organizations
-    has_permission, error = await rbac_service.user_has_permission(current_user_id, "organization:read")
+    has_permission, error = await user_role_service.user_has_permission(current_user_id, "organization:read")
     if error or not has_permission:
         current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Insufficient permissions to view organizations"))
         raise HTTPException(
@@ -119,11 +120,11 @@ async def get_organization(org_id: UUID, current_user_id: UUID = Depends(get_cur
         )
     
     # Additionally check if user belongs to this organization
-    has_role, error = await rbac_service.user_has_role(current_user_id, "platform_admin")
+    has_role, error = await user_role_service.user_has_role(current_user_id, "platform_admin")
     if not has_role:
-        has_role, error = await rbac_service.user_has_role(current_user_id, "org_admin", org_id)
+        has_role, error = await user_role_service.user_has_role(current_user_id, "org_admin", org_id)
         if not has_role:
-            has_permission, error = await rbac_service.user_has_permission(current_user_id, "organization:read", org_id)
+            has_permission, error = await user_role_service.user_has_permission(current_user_id, "organization:read", org_id)
             if error or not has_permission:
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "You don't have access to this organization"))
                 raise HTTPException(
@@ -151,7 +152,7 @@ async def get_all_organizations(current_user_id: UUID = Depends(get_current_user
     current_span.set_attribute("user.id", str(current_user_id))
     
     # Check if user has platform_admin role
-    has_role, error = await rbac_service.user_has_role(current_user_id, "platform_admin")
+    has_role, error = await user_role_service.user_has_role(current_user_id, "platform_admin")
     if error:
         current_span.set_status(trace.Status(trace.StatusCode.ERROR, error))
         raise HTTPException(
@@ -173,7 +174,7 @@ async def get_all_organizations(current_user_id: UUID = Depends(get_current_user
         return organizations
     else:
         # Regular users and org admins can only see organizations they belong to
-        organizations, error = await rbac_service.get_organizations_for_user(current_user_id)
+        organizations, error = await user_role_service.get_organizations_for_user(current_user_id)
         if error:
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, error))
             raise HTTPException(
@@ -194,9 +195,9 @@ async def update_organization(org_id: UUID, org_data: OrganizationUpdate, curren
     current_span.set_attribute("organization.id", str(org_id))
     
     # Check if user has platform_admin or org_admin role for this organization
-    has_role, error = await rbac_service.user_has_role(current_user_id, "platform_admin")
+    has_role, error = await user_role_service.user_has_role(current_user_id, "platform_admin")
     if not has_role:
-        has_role, error = await rbac_service.user_has_role(current_user_id, "org_admin", org_id)
+        has_role, error = await user_role_service.user_has_role(current_user_id, "org_admin", org_id)
         if error or not has_role:
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Only platform administrators or organization administrators can update organizations"))
             raise HTTPException(
@@ -232,7 +233,7 @@ async def delete_organization(org_id: UUID, current_user_id: UUID = Depends(get_
     current_span.set_attribute("organization.id", str(org_id))
     
     # Check if user has platform_admin role
-    has_role, error = await rbac_service.user_has_role(current_user_id, "platform_admin")
+    has_role, error = await user_role_service.user_has_role(current_user_id, "platform_admin")
     if error or not has_role:
         current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Only platform administrators can delete organizations"))
         raise HTTPException(

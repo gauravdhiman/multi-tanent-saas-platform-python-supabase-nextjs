@@ -1,0 +1,234 @@
+saas-platform/
+├── README.md
+├── .gitignore
+├── docker-compose.yml
+├── .env.example
+├── LICENSE
+│
+├── docs/                          # Project documentation
+│   ├── architecture.md
+│   ├── deployment.md
+│   ├── api-documentation.md
+│   └── onboarding-guide.md
+│
+├── scripts/                       # Utility scripts
+│   ├── migrate.sh
+│   ├── deploy.sh
+│   ├── backup-db.sh
+│   └── seed-data.sh
+│
+├── frontend/                      # Next.js frontend
+│   ├── src/
+│   │   ├── app/                   # Next.js app router
+│   │   │   ├── (auth)/            # Auth pages (login, signup, etc.)
+│   │   │   ├── dashboard/         # Dashboard pages
+│   │   │   ├── settings/          # Settings pages
+│   │   │   ├── billing/           # Billing pages
+│   │   │   ├── admin/             # Admin pages
+│   │   │   ├── api/               # API routes
+│   │   │   ├── globals.css
+│   │   │   └── layout.tsx
+│   │   │
+│   │   ├── components/           # Reusable UI components
+│   │   │   ├── ui/                # Shadcn/ui components
+│   │   │   ├── auth/
+│   │   │   ├── billing/
+│   │   │   ├── dashboard/
+│   │   │   └── layout/
+│   │   │
+│   │   ├── lib/                   # Utility functions
+│   │   │   ├── auth.ts            # Auth helpers
+│   │   │   ├── api.ts             # API client
+│   │   │   ├── utils.ts           # General utilities
+│   │   │   └── validations.ts     # Form validations
+│   │   │
+│   │   ├── hooks/                 # Custom React hooks
+│   │   │   ├── useAuth.ts
+│   │   │   ├── useBilling.ts
+│   │   │   └── useTenant.ts
+│   │   │
+│   │   ├── types/                 # TypeScript types
+│   │   │   ├── auth.ts
+│   │   │   ├── billing.ts
+│   │   │   ├── tenant.ts
+│   │   │   └── api.ts
+│   │   │
+│   │   ├── store/                 # State management
+│   │   │   ├── auth-slice.ts
+│   │   │   ├── tenant-slice.ts
+│   │   │   └── store.ts
+│   │   │
+│   │   └── constants/             # App constants
+│   │       ├── routes.ts
+│   │       └── api-endpoints.ts
+│   │
+│   ├── public/                    # Static assets
+│   │   ├── favicon.ico
+│   │   └── images/
+│   │
+│   ├── package.json
+│   ├── tailwind.config.js
+│   ├── tsconfig.json
+│   └── next.config.js
+│
+├── backend/                       # Python FastAPI backend
+│   ├── shared/                    # Shared code across services
+│   │   ├── models/                # SQLAlchemy models
+│   │   │   ├── user.py
+│   │   │   ├── tenant.py
+│   │   │   ├── membership.py
+│   │   │   ├── billing.py
+│   │   │   └── audit.py
+│   │   │
+│   │   ├── schemas/               # Pydantic schemas
+│   │   │   ├── user.py
+│   │   │   ├── tenant.py
+│   │   │   ├── auth.py
+│   │   │   └── billing.py
+│   │   │
+│   │   ├── utils/                 # Common utilities
+│   │   │   ├── security.py
+│   │   │   ├── database.py
+│   │   │   ├── permissions.py
+│   │   │   └── notifications.py
+│   │   │
+│   │   └── config.py              # Shared configuration
+│   │
+│   ├── services/                  # Microservices
+│   │   ├── auth-service/          # Authentication service
+│   │   │   ├── app/
+│   │   │   │   ├── main.py
+│   │   │   │   ├── api/
+│   │   │   │   │   ├── v1/
+│   │   │   │   │   │   ├── endpoints/
+│   │   │   │   │   │   │   │   ├── auth.py
+│   │   │   │   │   │   │   │   └── users.py
+│   │   │   │   │   │   └── ...
+│   │   │   │   ├── core/
+│   │   │   │   │   ├── security.py
+│   │   │   │   │   └── config.py
+│   │   │   │   └── ...
+│   │   │   ├── tests/
+│   │   │   ├── Dockerfile
+│   │   │   └── requirements.txt
+│   │   │
+│   │   ├── tenant-service/        # Tenant management service
+│   │   │   ├── (similar structure)
+│   │   │
+│   │   ├── user-service/          # User management service
+│   │   │   ├── (similar structure)
+│   │   │
+│   │   ├── rbac-service/          # RBAC service
+│   │   │   ├── (similar structure)
+│   │   │
+│   │   ├── billing-service/       # Billing service
+│   │   │   ├── (similar structure)
+│   │   │
+│   │   └── notification-service/  # Notification service
+│   │       ├── (similar structure)
+│   │
+│   ├── migrations/                # Database migrations
+│   │   ├── versions/
+│   │   │   ├── 001_initial_schema.py
+│   │   │   ├── 002_add_rls_policies.py
+│   │   │   └── ...
+│   │   ├── alembic.ini
+│   │   └── env.py
+│   │
+│   └── tests/                     # Backend integration tests
+│       ├── test_auth.py
+│       ├── test_rbac.py
+│       ├── test_billing.py
+│       └── test_rls.py
+│
+├── infrastructure/                # Infrastructure as Code
+│   ├── terraform/                 # Terraform configs
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+│   │   └── modules/
+│   │       ├── database/
+│   │       ├── kubernetes/
+│   │       └── monitoring/
+│   │
+│   ├── kubernetes/                # K8s manifests
+│   │   ├── namespace.yaml
+│   │   ├── configmap.yaml
+│   │   ├── secrets.yaml
+│   │   ├── services/
+│   │   │   ├── auth-service.yaml
+│   │   │   ├── frontend.yaml
+│   │   │   └── ...
+│   │   └── deployments/
+│   │       ├── auth-service.yaml
+│   │       ├── frontend.yaml
+│   │       └── ...
+│   │
+│   └── docker/                    # Docker configs
+│       ├── postgres/
+│       │   ├── Dockerfile
+│       │   └── init-scripts/
+│       │
+│       └── redis/
+│           └── Dockerfile
+│
+├── ci-cd/                         # CI/CD pipelines
+│   ├── github-actions/
+│   │   ├── build.yml
+│   │   ├── test.yml
+│   │   ├── deploy-staging.yml
+│   │   └── deploy-prod.yml
+│   │
+│   └── scripts/
+│       ├── build.sh
+│       ├── test.sh
+│       └── deploy.sh
+│
+├── monitoring/                    # Monitoring & observability
+│   ├── prometheus/
+│   │   ├── prometheus.yml
+│   │   └── rules/
+│   │       ├── alert-rules.yml
+│   │       └── recording-rules.yml
+│   │
+│   ├── grafana/
+│   │   ├── dashboards/
+│   │   │   ├── billing.json
+│   │   │   ├── system.json
+│   │   │   └── tenant-usage.json
+│   │   ├── provisioning/
+│   │   │   ├── dashboards.yml
+│   │   │   └── datasources.yml
+│   │   └── config.ini
+│   │
+│   └── opentelemetry/
+│       ├── collector/
+│       │   ├── otel-collector-config.yaml
+│       │   └── Dockerfile
+│       │
+│       └── instrumentation/
+│           ├── python/
+│           │   └── instrumentation.py
+│           │
+│           └── javascript/
+│               └── instrumentation.js
+│
+└── tests/                         # E2E tests
+    ├── cypress/
+    │   ├── e2e/
+    │   │   ├── auth.cy.js
+    │   │   ├── billing.cy.js
+    │   │   ├── tenant-management.cy.js
+    │   │   └── dashboard.cy.js
+    │   ├── support/
+    │   │   ├── commands.js
+    │   │   └── e2e.js
+    │   └── cypress.config.js
+    │
+    └── playwright/
+        ├── tests/
+        │   ├── auth.spec.ts
+        │   ├── billing.spec.ts
+        │   └── dashboard.spec.ts
+        ├── tests-examples/
+        └── playwright.config.ts

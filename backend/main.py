@@ -13,7 +13,7 @@ from opentelemetry import trace
 from config import settings
 from config import supabase_config
 from src.auth.routes import auth_router
-from src.auth.rbac_routes import rbac_router
+from src.rbac.routes import rbac_router
 from src.organization.routes import organization_router
 
 # Import the OpenTelemetry setup function first to ensure proper logging configuration
