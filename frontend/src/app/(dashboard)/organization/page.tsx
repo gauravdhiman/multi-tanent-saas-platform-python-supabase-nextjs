@@ -25,6 +25,7 @@ interface Organization {
   name: string;
   description: string | null;
   slug: string;
+  website: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -282,6 +283,21 @@ export default function OrganizationPage() {
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Description</label>
                   <p className="text-foreground">{organization.description || 'No description'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Website</label>
+                  {organization.website ? (
+                    <a 
+                      href={organization.website} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary hover:text-primary/80 underline"
+                    >
+                      {organization.website}
+                    </a>
+                  ) : (
+                    <p className="text-muted-foreground">No website</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Slug</label>

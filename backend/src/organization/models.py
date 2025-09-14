@@ -3,7 +3,7 @@ Pydantic models for Organization functionality.
 """
 
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, HttpUrl
 from uuid import UUID
 from datetime import datetime
 
@@ -13,6 +13,7 @@ class OrganizationBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="Organization name")
     description: Optional[str] = Field(None, max_length=500, description="Organization description")
     slug: str = Field(..., min_length=1, max_length=100, description="Organization slug (unique identifier)")
+    website: Optional[HttpUrl] = Field(None, description="Organization website URL")
     is_active: bool = Field(default=True, description="Whether the organization is active")
 
 
@@ -26,6 +27,7 @@ class OrganizationUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100, description="Organization name")
     description: Optional[str] = Field(None, max_length=500, description="Organization description")
     slug: Optional[str] = Field(None, min_length=1, max_length=100, description="Organization slug (unique identifier)")
+    website: Optional[HttpUrl] = Field(None, description="Organization website URL")
     is_active: Optional[bool] = Field(None, description="Whether the organization is active")
 
 

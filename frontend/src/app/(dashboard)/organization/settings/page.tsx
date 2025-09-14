@@ -28,6 +28,7 @@ interface Organization {
   name: string;
   description: string | null;
   slug: string;
+  website: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -221,8 +222,19 @@ export default function OrganizationSettingsPage() {
                     defaultValue={organization.slug} 
                     placeholder="organization-slug"
                   />
-                  <p className="text-xs text-gray-500">Used in URLs and API calls</p>
+                  <p className="text-xs text-muted-foreground">Used in URLs and API calls</p>
                 </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="orgWebsite">Website</Label>
+                <Input 
+                  id="orgWebsite" 
+                  type="url"
+                  defaultValue={organization.website || ''}
+                  placeholder="https://www.example.com"
+                />
+                <p className="text-xs text-muted-foreground">Your organization&apos;s official website URL</p>
               </div>
               
               <div className="space-y-2">
@@ -230,9 +242,24 @@ export default function OrganizationSettingsPage() {
                 <Textarea 
                   id="orgDescription" 
                   defaultValue={organization.description || ''}
-                  placeholder="Describe your organization"
-                  className="min-h-[100px]"
+                  placeholder={`Tell us about your organization! Consider including:
+
+• When your organization was founded
+• Number of employees (e.g., "50-100 employees")
+• Location and places of operation
+• Operating hours and time zones
+• Products and services you offer
+• Your business domain and industry
+• Geographic areas you serve
+• Key links (website, LinkedIn, social media)
+
+Example: "Founded in 2020, we're a 25-person software company based in San Francisco, operating globally across multiple time zones. We specialize in SaaS solutions for e-commerce businesses, serving clients in North America and Europe. Our flagship products include inventory management and analytics tools. Visit us at company.com or connect on LinkedIn."`}
+                  className="min-h-[120px]"
+                  rows={6}
                 />
+                <p className="text-xs text-muted-foreground">
+                  A detailed description helps team members and stakeholders understand your organization better. Include founding date, size, location, services, and important links.
+                </p>
               </div>
 
               <div className="space-y-2">

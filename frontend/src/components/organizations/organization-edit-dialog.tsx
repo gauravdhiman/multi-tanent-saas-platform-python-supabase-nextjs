@@ -41,6 +41,10 @@ const organizationSchema = z.object({
     .min(2, 'Slug must be at least 2 characters')
     .max(50, 'Slug must be less than 50 characters')
     .regex(/^[a-z0-9-]+$/, 'Slug can only contain lowercase letters, numbers, and hyphens'),
+  website: z.string()
+    .url('Please enter a valid URL')
+    .optional()
+    .or(z.literal('')),
   is_active: z.boolean(),
 });
 
@@ -51,6 +55,7 @@ interface Organization {
   name: string;
   description: string | null;
   slug: string;
+  website: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -89,6 +94,7 @@ export function OrganizationEditDialog({
         name: organization.name,
         description: organization.description || '',
         slug: organization.slug,
+        website: organization.website || '',
         is_active: organization.is_active,
       });
     }
@@ -103,6 +109,7 @@ export function OrganizationEditDialog({
         name: data.name,
         description: data.description || '',
         slug: data.slug,
+        website: data.website || '',
         is_active: data.is_active,
       });
 
@@ -204,6 +211,28 @@ export function OrganizationEditDialog({
                   </FormControl>
                   <FormDescription>
                     Optional description of your organization
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="website"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Website</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="url"
+                      placeholder="https://www.example.com"
+                      {...field}
+                      disabled={loading}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Your organization's official website URL
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
