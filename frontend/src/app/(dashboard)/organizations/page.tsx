@@ -16,16 +16,7 @@ import { OrganizationCreateDialog } from '@/components/organizations/organizatio
 import { OrganizationEditDialog } from '@/components/organizations/organization-edit-dialog';
 import { OrganizationDeleteDialog } from '@/components/organizations/organization-delete-dialog';
 import Link from 'next/link';
-
-interface Organization {
-  id: string;
-  name: string;
-  description: string | null;
-  slug: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import type { Organization } from '@/types/organization';
 
 export default function OrganizationsPage() {
   const { user } = useAuth();

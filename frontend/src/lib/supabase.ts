@@ -25,33 +25,8 @@ export const supabase = createClient(
   }
 );
 
-// Types for authentication
-export interface AuthUser {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  emailConfirmedAt?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+// Import auth types from centralized location
+import type { AuthUser, AuthSession, SignUpData, SignInData } from '@/types/auth';
 
-export interface AuthSession {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
-  user: AuthUser;
-}
-
-export interface SignUpData {
-  email: string;
-  password: string;
-  passwordConfirm: string;
-  firstName: string;
-  lastName: string;
-}
-
-export interface SignInData {
-  email: string;
-  password: string;
-}
+// Re-export for backward compatibility
+export type { AuthUser, AuthSession, SignUpData, SignInData };

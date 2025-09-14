@@ -23,10 +23,7 @@ const organizationSchema = z.object({
 
 type OrganizationFormData = z.infer<typeof organizationSchema>;
 
-interface OrganizationCreationFormProps {
-  onSkip?: () => void;
-  onSuccess?: () => void;
-}
+import type { OrganizationCreationFormProps } from '@/types/auth';
 
 export function OrganizationCreationForm({ onSkip, onSuccess }: OrganizationCreationFormProps) {
   const [isLoading, setIsLoading] = useState(false);

@@ -5,10 +5,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { organizationService } from '@/services/organization-service';
 import { Loader2 } from 'lucide-react';
-
-interface OrganizationCheckProps {
-  children: React.ReactNode;
-}
+import type { OrganizationCheckProps } from '@/types/auth';
 
 export function OrganizationCheck({ children }: OrganizationCheckProps) {
   const { user, loading: authLoading } = useAuth();

@@ -25,16 +25,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-
-interface Organization {
-  id: string;
-  name: string;
-  description: string | null;
-  slug: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import type { Organization } from '@/types/organization';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -74,7 +65,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [organization, setOrganization] = useState<Organization | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   const loadUserOrganization = useCallback(async () => {
     if (!user) return;

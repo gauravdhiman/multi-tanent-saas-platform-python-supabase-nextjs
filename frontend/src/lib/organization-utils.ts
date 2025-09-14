@@ -2,12 +2,7 @@
  * Utility functions for organization management
  */
 
-// Minimal organization interface for dummy detection
-export interface OrganizationForDetection {
-  name: string;
-  slug: string;
-  description?: string | null;
-}
+import type { OrganizationForDetection } from '@/types/organization';
 
 /**
  * Check if an organization is a dummy/default organization

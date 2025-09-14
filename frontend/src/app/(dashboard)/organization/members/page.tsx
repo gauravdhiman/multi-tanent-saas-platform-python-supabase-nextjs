@@ -14,30 +14,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-
-interface Organization {
-  id: string;
-  name: string;
-  description: string | null;
-  slug: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-interface Member {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  is_verified: boolean;
-  created_at: string;
-  roles: Array<{
-    id: string;
-    name: string;
-    description: string;
-  }>;
-}
+import type { Organization } from '@/types/organization';
+import type { Member } from '@/types/user';
 
 export default function OrganizationMembersPage() {
   const { user } = useAuth();

@@ -16,16 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { organizationService } from '@/services/organization-service';
 import { Loader2, AlertTriangle } from 'lucide-react';
-
-interface Organization {
-  id: string;
-  name: string;
-  description: string | null;
-  slug: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import type { Organization } from '@/types/organization';
 
 interface OrganizationDeleteDialogProps {
   open: boolean;

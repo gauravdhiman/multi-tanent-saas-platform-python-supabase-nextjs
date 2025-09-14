@@ -3,56 +3,14 @@ import { supabase } from '@/lib/supabase';
 import { SpanStatusCode } from '@opentelemetry/api';
 import { getTracer, getMeter, ensureOpentelemetryIsInitialized } from '@/lib/opentelemetry';
 
-// Define TypeScript interfaces for RBAC entities
-export interface Role {
-  id: string;
-  name: string;
-  description: string | null;
-  is_system_role: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Permission {
-  id: string;
-  name: string;
-  description: string | null;
-  resource: string;
-  action: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface RolePermission {
-  id: string;
-  role_id: string;
-  permission_id: string;
-  created_at: string;
-}
-
-export interface UserRole {
-  id: string;
-  user_id: string;
-  role_id: string;
-  organization_id: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface RoleWithPermissions extends Role {
-  permissions: Permission[];
-}
-
-export interface UserWithRoles {
-  id: string;
-  email: string;
-  first_name: string | null;
-  last_name: string | null;
-  is_verified: boolean;
-  created_at: string;
-  updated_at: string;
-  roles: RoleWithPermissions[];
-}
+// Import types from centralized location
+import type { 
+  Role, 
+  Permission, 
+  RolePermission, 
+  UserRole, 
+  RoleWithPermissions 
+} from '@/types/rbac';
 
 // RBAC Service class
 class RBACService {
@@ -1260,7 +1218,7 @@ class RBACService {
         const url = organizationId 
           ? `/users/${userId}/roles/${roleName}?organization_id=${organizationId}`
           : `/users/${userId}/roles/${roleName}`;
-        const response = await this.fetchWithAuth(url);
+        await this.fetchWithAuth(url);
         span.setAttribute('role.granted', true);
         span.setStatus({ code: SpanStatusCode.OK });
         return true;

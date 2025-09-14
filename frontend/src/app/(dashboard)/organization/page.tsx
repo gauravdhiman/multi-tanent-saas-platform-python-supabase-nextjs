@@ -19,38 +19,14 @@ import {
   Activity
 } from 'lucide-react';
 import Link from 'next/link';
-
-interface Organization {
-  id: string;
-  name: string;
-  description: string | null;
-  slug: string;
-  website: string | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-interface UserRole {
-  id: string;
-  name: string;
-  description: string | null;
-  permissions: Array<{
-    id: string;
-    name: string;
-    description: string | null;
-    resource: string;
-    action: string;
-    created_at: string;
-    updated_at: string;
-  }>;
-}
+import type { Organization } from '@/types/organization';
+import type { UserRoleWithPermissions } from '@/types/user';
 
 export default function OrganizationPage() {
   const { user } = useAuth();
   
   const [organization, setOrganization] = useState<Organization | null>(null);
-  const [userRoles, setUserRoles] = useState<UserRole[]>([]);
+  const [userRoles, setUserRoles] = useState<UserRoleWithPermissions[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userPermissions, setUserPermissions] = useState({

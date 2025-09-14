@@ -50,16 +50,7 @@ const organizationSchema = z.object({
 
 type OrganizationFormData = z.infer<typeof organizationSchema>;
 
-interface Organization {
-  id: string;
-  name: string;
-  description: string | null;
-  slug: string;
-  website: string | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import type { Organization } from '@/types/organization';
 
 interface OrganizationEditDialogProps {
   open: boolean;
@@ -232,7 +223,7 @@ export function OrganizationEditDialog({
                     />
                   </FormControl>
                   <FormDescription>
-                    Your organization's official website URL
+                    Your organization&apos;s official website URL
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

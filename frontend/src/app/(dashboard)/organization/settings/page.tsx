@@ -22,17 +22,7 @@ import {
   Bell,
   Key
 } from 'lucide-react';
-
-interface Organization {
-  id: string;
-  name: string;
-  description: string | null;
-  slug: string;
-  website: string | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import type { Organization } from '@/types/organization';
 
 export default function OrganizationSettingsPage() {
   const { user } = useAuth();

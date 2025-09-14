@@ -3,12 +3,7 @@
 import React, { useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
-
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-  /** If true, only allows access to unauthenticated users (for auth pages) */
-  reverse?: boolean;
-}
+import type { ProtectedRouteProps } from '@/types/auth';
 
 export function ProtectedRoute({ children, reverse = false }: ProtectedRouteProps) {
   const { user, loading } = useAuth();

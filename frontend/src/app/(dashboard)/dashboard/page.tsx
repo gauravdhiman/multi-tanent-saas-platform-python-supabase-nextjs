@@ -1,13 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAuth } from '@/contexts/auth-context';
 import { RBACDashboard } from '@/components/dashboard/rbac-dashboard';
 import { PermissionDemo } from '@/components/dashboard/permission-demo';
 import { DummyOrgNotification } from '@/components/dashboard/dummy-org-notification';
 
 export default function DashboardPage() {
-  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
 
   return (

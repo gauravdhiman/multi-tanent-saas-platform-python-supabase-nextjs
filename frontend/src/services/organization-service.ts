@@ -3,30 +3,8 @@ import { supabase } from '@/lib/supabase';
 import { SpanStatusCode } from '@opentelemetry/api';
 import { getTracer, getMeter, ensureOpentelemetryIsInitialized } from '@/lib/opentelemetry';
 
-// Define TypeScript interfaces for Organization entities
-export interface Organization {
-  id: string;
-  name: string;
-  description: string | null;
-  slug: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface OrganizationCreate {
-  name: string;
-  description?: string;
-  slug: string;
-  is_active?: boolean;
-}
-
-export interface OrganizationUpdate {
-  name?: string;
-  description?: string;
-  slug?: string;
-  is_active?: boolean;
-}
+// Import types from centralized location
+import type { Organization, OrganizationCreate, OrganizationUpdate } from '@/types/organization';
 
 // Organization Service class
 class OrganizationService {

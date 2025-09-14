@@ -1,46 +1,21 @@
-// Core user types
-export interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  avatar?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+/**
+ * Central type definitions - re-exports from entity-specific files
+ */
 
-// Organization/Tenant types
-export interface Organization {
-  id: string;
-  name: string;
-  slug: string;
-  plan: 'free' | 'pro' | 'enterprise';
-  createdAt: string;
-  updatedAt: string;
-}
+// Organization types
+export * from './organization';
+
+// User types
+export * from './user';
 
 // Auth types
-export interface AuthUser {
-  user: User;
-  organization: Organization;
-  accessToken: string;
-}
+export * from './auth';
 
-// API Response types
-export interface ApiResponse<T = Record<string, unknown>> {
-  data: T;
-  message?: string;
-  success: boolean;
-}
+// API types
+export * from './api';
 
-export interface ApiError {
-  message: string;
-  code?: string;
-  details?: Record<string, unknown>;
-}
+// RBAC types
+export * from './rbac';
 
-// Component prop types
-export interface BaseProps {
-  className?: string;
-  children?: React.ReactNode;
-}
+// Common types
+export * from './common';

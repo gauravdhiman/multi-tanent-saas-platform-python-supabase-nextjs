@@ -6,8 +6,9 @@
  */
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session, AuthError, Provider } from '@supabase/supabase-js';
-import { supabase, AuthUser, SignUpData, SignInData } from '@/lib/supabase';
+import { User, Session, Provider } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
+import type { AuthUser, SignUpData, SignInData, AuthContextType, AuthProviderProps } from '@/types/auth';
 import { getMeter } from '@/lib/opentelemetry';
 import { 
   withTelemetrySignUp, 
@@ -34,22 +35,7 @@ const authFailureCounter = meter?.createCounter('auth_failures', {
   description: 'Number of failed authentications',
 });
 
-interface AuthContextType {
-  user: AuthUser | null;
-  session: Session | null;
-  loading: boolean;
-  signUp: (data: SignUpData) => Promise<{ error: AuthError | null }>;
-  signIn: (data: SignInData) => Promise<{ error: AuthError | null }>;
-  signInWithOAuth: (provider: Provider) => Promise<{ error: AuthError | null }>;
-  signOut: () => Promise<{ error: AuthError | null }>;
-  isAuthenticated: boolean;
-}
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-interface AuthProviderProps {
-  children: React.ReactNode;
-}
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<AuthUser | null>(null);
