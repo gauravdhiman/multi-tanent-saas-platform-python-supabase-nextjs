@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
+import { useTheme } from '@/contexts/theme-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,7 @@ import {
 
 export default function SettingsPage() {
   const { user } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [loading, setLoading] = useState(false);
 
   const handleSaveProfile = async () => {
@@ -35,12 +37,12 @@ export default function SettingsPage() {
       {/* Page Header */}
       <div className="mb-6">
         <div className="flex items-center space-x-4">
-          <div className="bg-gray-100 p-3 rounded-lg">
-            <SettingsIcon className="h-8 w-8 text-gray-600" />
+          <div className="bg-primary/10 p-3 rounded-lg">
+            <SettingsIcon className="h-8 w-8 text-primary" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-            <p className="text-gray-600">Manage your account and application preferences</p>
+            <h1 className="text-3xl font-bold text-foreground">Settings</h1>
+            <p className="text-muted-foreground">Manage your account and application preferences</p>
           </div>
         </div>
       </div>
@@ -234,20 +236,62 @@ export default function SettingsPage() {
               <div className="space-y-4">
                 <div>
                   <h4 className="text-sm font-medium mb-3">Theme</h4>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="border rounded-lg p-3 cursor-pointer hover:bg-gray-50">
-                      <div className="w-full h-20 bg-white border rounded mb-2"></div>
-                      <p className="text-xs text-center">Light</p>
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    <div 
+                      className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                        theme === 'light' 
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' 
+                          : 'border-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 dark:border-gray-700'
+                      }`}
+                      onClick={() => setTheme('light')}
+                    >
+                      <div className="w-full h-20 bg-white border rounded mb-2 shadow-sm"></div>
+                      <p className="text-xs text-center font-medium">Light</p>
+                      {theme === 'light' && (
+                        <div className="flex justify-center mt-1">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        </div>
+                      )}
                     </div>
-                    <div className="border rounded-lg p-3 cursor-pointer hover:bg-gray-50">
-                      <div className="w-full h-20 bg-gray-900 border rounded mb-2"></div>
-                      <p className="text-xs text-center">Dark</p>
+                    <div 
+                      className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                        theme === 'dark' 
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' 
+                          : 'border-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 dark:border-gray-700'
+                      }`}
+                      onClick={() => setTheme('dark')}
+                    >
+                      <div className="w-full h-20 bg-gray-900 border rounded mb-2 shadow-sm"></div>
+                      <p className="text-xs text-center font-medium">Dark</p>
+                      {theme === 'dark' && (
+                        <div className="flex justify-center mt-1">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        </div>
+                      )}
                     </div>
-                    <div className="border rounded-lg p-3 cursor-pointer hover:bg-gray-50">
-                      <div className="w-full h-20 bg-gradient-to-r from-white to-gray-900 border rounded mb-2"></div>
-                      <p className="text-xs text-center">System</p>
+                    <div 
+                      className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                        theme === 'system' 
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' 
+                          : 'border-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 dark:border-gray-700'
+                      }`}
+                      onClick={() => setTheme('system')}
+                    >
+                      <div className="w-full h-20 bg-gradient-to-r from-white to-gray-900 border rounded mb-2 shadow-sm"></div>
+                      <p className="text-xs text-center font-medium">System</p>
+                      {theme === 'system' && (
+                        <div className="flex justify-center mt-1">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        </div>
+                      )}
                     </div>
                   </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {theme === 'system' 
+                      ? 'Automatically matches your system preference' 
+                      : `Currently using ${theme} theme`
+                    }
+                  </p>
                 </div>
 
                 <Separator />

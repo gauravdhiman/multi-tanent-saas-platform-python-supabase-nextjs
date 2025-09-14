@@ -39,24 +39,24 @@ export default function DashboardPage() {
 
       {/* Tab Content */}
       {activeTab === 'overview' ? (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Dashboard</h1>
-          <p className="text-gray-600 mb-6">Welcome to your dashboard!</p>
+        <div className="bg-card rounded-lg shadow-md p-6">
+          <h1 className="text-3xl font-bold text-foreground mb-2">Dashboard</h1>
+          <p className="text-muted-foreground mb-6">Welcome to your dashboard!</p>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="bg-blue-50 rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">Account Information</h2>
-              <p className="text-gray-600">Manage your account settings</p>
+            <div className="bg-primary/5 rounded-lg p-6">
+              <h2 className="text-xl font-semibold text-foreground mb-2">Account Information</h2>
+              <p className="text-muted-foreground">Manage your account settings</p>
             </div>
             
-            <div className="bg-green-50 rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">Quick Stats</h2>
-              <p className="text-gray-600">View your usage statistics</p>
+            <div className="bg-primary/5 rounded-lg p-6">
+              <h2 className="text-xl font-semibold text-foreground mb-2">Quick Stats</h2>
+              <p className="text-muted-foreground">View your usage statistics</p>
             </div>
             
-            <div className="bg-purple-50 rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">Recent Activity</h2>
-              <p className="text-gray-600">Check your recent actions</p>
+            <div className="bg-primary/5 rounded-lg p-6">
+              <h2 className="text-xl font-semibold text-foreground mb-2">Recent Activity</h2>
+              <p className="text-muted-foreground">Check your recent actions</p>
             </div>
           </div>
         </div>

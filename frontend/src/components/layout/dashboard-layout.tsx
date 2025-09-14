@@ -24,6 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 interface Organization {
   id: string;
@@ -119,14 +120,35 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       .slice(0, 2);
   };
 
+  const getCurrentPageTitle = () => {
+    if (pathname === '/dashboard') return 'Dashboard';
+    if (pathname === '/organization') return 'Organization';
+    if (pathname === '/organization/members') return 'Organization › Members';
+    if (pathname === '/organization/settings') return 'Organization › Settings';
+    if (pathname === '/organizations') return 'Organizations';
+    if (pathname === '/users') return 'Users';
+    if (pathname === '/billing') return 'Billing';
+    if (pathname === '/settings') return 'Settings';
+    
+    // Handle dynamic routes
+    if (pathname.startsWith('/organization')) {
+      if (pathname.includes('/members')) return 'Organization › Members';
+      if (pathname.includes('/settings')) return 'Organization › Settings';
+      return 'Organization';
+    }
+    if (pathname.startsWith('/organizations')) return 'Organizations';
+    
+    return 'Dashboard';
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <div className={`bg-white shadow-lg transition-all duration-300 ${sidebarCollapsed ? 'w-16' : 'w-64'} flex flex-col`}>
-        {/* Sidebar Header */}
-        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+    <div className="h-screen bg-background flex overflow-hidden">
+      {/* Sidebar - Fixed height, full viewport */}
+      <div className={`bg-card border-r border-border shadow-lg transition-all duration-300 ${sidebarCollapsed ? 'w-16' : 'w-64'} flex flex-col h-full`}>
+        {/* Sidebar Header - Fixed */}
+        <div className="p-4 border-b border-border flex items-center justify-between flex-shrink-0">
           {!sidebarCollapsed && (
-            <h2 className="text-lg font-semibold text-gray-800">SaaS Platform</h2>
+            <h2 className="text-lg font-semibold text-foreground">SaaS Platform</h2>
           )}
           <Button
             variant="ghost"
@@ -138,8 +160,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </Button>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2">
+        {/* Navigation - Scrollable if needed */}
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {navigationItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || 
@@ -151,8 +173,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 onClick={() => handleNavigation(item.href)}
                 className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
                   isActive
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 } ${sidebarCollapsed ? 'justify-center' : ''}`}
                 title={sidebarCollapsed ? item.name : undefined}
               >
@@ -163,8 +185,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           })}
         </nav>
 
-        {/* User Menu */}
-        <div className="p-4 border-t border-gray-200">
+        {/* User Menu - Fixed at bottom */}
+        <div className="p-4 border-t border-border flex-shrink-0">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className={`w-full ${sidebarCollapsed ? 'px-2' : 'justify-start px-3'} h-auto py-2`}>
@@ -176,10 +198,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   </Avatar>
                   {!sidebarCollapsed && (
                     <div className="text-left">
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-foreground">
                         {user?.firstName} {user?.lastName}
                       </p>
-                      <p className="text-xs text-gray-500">{user?.email}</p>
+                      <p className="text-xs text-muted-foreground">{user?.email}</p>
                     </div>
                   )}
                 </div>
@@ -200,26 +222,29 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200">
+      {/* Main Content Area - Fixed height */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        {/* Header - Fixed */}
+        <header className="bg-card shadow-sm border-b border-border flex-shrink-0">
           <div className="px-6 py-4 flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <h1 className="text-xl font-semibold text-gray-900">
-                {organization ? organization.name : (loading ? 'Loading...' : 'Dashboard')}
-              </h1>
+              <div>
+                <h1 className="text-xl font-semibold text-foreground">
+                  {getCurrentPageTitle()}
+                </h1>
+              </div>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-muted-foreground">
                 Welcome, {user?.firstName}
               </span>
+              <ThemeToggle />
             </div>
           </div>
         </header>
 
-        {/* Page Content */}
-        <main className="flex-1 overflow-auto">
+        {/* Page Content - Scrollable */}
+        <main className="flex-1 overflow-y-auto bg-background">
           {children}
         </main>
       </div>

@@ -21,12 +21,12 @@ export default function BillingPage() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-4">
-            <div className="bg-purple-100 p-3 rounded-lg">
-              <CreditCard className="h-8 w-8 text-purple-600" />
+            <div className="bg-primary/10 p-3 rounded-lg">
+              <CreditCard className="h-8 w-8 text-primary" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Billing</h1>
-              <p className="text-gray-600">Manage your subscription and billing information</p>
+              <h1 className="text-3xl font-bold text-foreground">Billing</h1>
+              <p className="text-muted-foreground">Manage your subscription and billing information</p>
             </div>
           </div>
 
@@ -49,32 +49,32 @@ export default function BillingPage() {
           <CardContent>
             <div className="space-y-4">
               <div>
-                <h3 className="text-2xl font-bold text-gray-900">Professional Plan</h3>
-                <p className="text-gray-600">Perfect for growing teams</p>
+                <h3 className="text-2xl font-bold text-foreground">Professional Plan</h3>
+                <p className="text-muted-foreground">Perfect for growing teams</p>
               </div>
               
               <div className="flex items-baseline space-x-2">
-                <span className="text-3xl font-bold text-gray-900">$49</span>
-                <span className="text-gray-500">per month</span>
+                <span className="text-3xl font-bold text-foreground">$49</span>
+                <span className="text-muted-foreground">per month</span>
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Users</span>
-                  <span className="text-sm font-medium">24 / 50</span>
+                  <span className="text-sm text-muted-foreground">Users</span>
+                  <span className="text-sm font-medium text-foreground">24 / 50</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-blue-600 h-2 rounded-full" style={{ width: '48%' }}></div>
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div className="bg-primary h-2 rounded-full" style={{ width: '48%' }}></div>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Storage</span>
-                  <span className="text-sm font-medium">12.5 GB / 100 GB</span>
+                  <span className="text-sm text-muted-foreground">Storage</span>
+                  <span className="text-sm font-medium text-foreground">12.5 GB / 100 GB</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-green-600 h-2 rounded-full" style={{ width: '12.5%' }}></div>
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div className="bg-primary h-2 rounded-full" style={{ width: '12.5%' }}></div>
                 </div>
               </div>
 

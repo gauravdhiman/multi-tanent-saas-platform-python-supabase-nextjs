@@ -177,12 +177,12 @@ export default function OrganizationSettingsPage() {
       {/* Page Header */}
       <div className="mb-6">
         <div className="flex items-center space-x-4">
-          <div className="bg-gray-100 p-3 rounded-lg">
-            <SettingsIcon className="h-8 w-8 text-gray-600" />
+          <div className="bg-primary/10 p-3 rounded-lg">
+            <SettingsIcon className="h-8 w-8 text-primary" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Organization Settings</h1>
-            <p className="text-gray-600">Manage your organization&apos;s configuration and preferences</p>
+            <h1 className="text-3xl font-bold text-foreground">Organization Settings</h1>
+            <p className="text-muted-foreground">Manage your organization&apos;s configuration and preferences</p>
           </div>
         </div>
       </div>

@@ -199,12 +199,12 @@ export default function OrganizationPage() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-4">
-            <div className="bg-blue-100 p-3 rounded-lg">
-              <Building2 className="h-8 w-8 text-blue-600" />
+            <div className="bg-primary/10 p-3 rounded-lg">
+              <Building2 className="h-8 w-8 text-primary" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">{organization.name}</h1>
-              <p className="text-gray-600">Organization Details</p>
+              <h1 className="text-3xl font-bold text-foreground">{organization.name}</h1>
+              <p className="text-muted-foreground">Organization Details</p>
             </div>
           </div>
 
@@ -220,7 +220,7 @@ export default function OrganizationPage() {
           <Badge variant={organization.is_active ? "default" : "secondary"}>
             {organization.is_active ? 'Active' : 'Inactive'}
           </Badge>
-          <span className="text-gray-500 flex items-center">
+          <span className="text-muted-foreground flex items-center">
             <Calendar className="h-4 w-4 mr-1" />
             Created {new Date(organization.created_at).toLocaleDateString()}
           </span>
@@ -276,19 +276,19 @@ export default function OrganizationPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Name</label>
-                  <p className="text-gray-900">{organization.name}</p>
+                  <label className="text-sm font-medium text-muted-foreground">Name</label>
+                  <p className="text-foreground">{organization.name}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Description</label>
-                  <p className="text-gray-900">{organization.description || 'No description'}</p>
+                  <label className="text-sm font-medium text-muted-foreground">Description</label>
+                  <p className="text-foreground">{organization.description || 'No description'}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Slug</label>
-                  <p className="text-gray-900 font-mono">{organization.slug}</p>
+                  <label className="text-sm font-medium text-muted-foreground">Slug</label>
+                  <p className="text-foreground font-mono">{organization.slug}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Status</label>
+                  <label className="text-sm font-medium text-muted-foreground">Status</label>
                   <div className="flex items-center space-x-2">
                     <Badge variant={organization.is_active ? "default" : "secondary"}>
                       {organization.is_active ? 'Active' : 'Inactive'}
@@ -315,20 +315,20 @@ export default function OrganizationPage() {
                     {userRoles.map((role) => (
                       <div key={role.id} className="border rounded-lg p-3">
                         <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-medium text-gray-900">{role.name}</h4>
+                          <h4 className="font-medium text-foreground">{role.name}</h4>
                           <Badge variant="outline">Role</Badge>
                         </div>
                         {role.description && (
-                          <p className="text-sm text-gray-600 mb-2">{role.description}</p>
+                          <p className="text-sm text-muted-foreground mb-2">{role.description}</p>
                         )}
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-muted-foreground">
                           {role.permissions.length} permission{role.permissions.length !== 1 ? 's' : ''}
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-500">No roles assigned</p>
+                  <p className="text-muted-foreground">No roles assigned</p>
                 )}
               </CardContent>
             </Card>
