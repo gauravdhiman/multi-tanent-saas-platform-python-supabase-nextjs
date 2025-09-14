@@ -254,6 +254,31 @@ class OrganizationService {
       return { isDummy: false };
     }
   }
+
+  // Create organization (platform admin only)
+  async createOrganization(orgData: OrganizationCreate): Promise<Organization> {
+    const response = await this.fetchWithAuth('/organizations/', {
+      method: 'POST',
+      body: JSON.stringify(orgData),
+    });
+    return response.json();
+  }
+
+  // Update organization
+  async updateOrganization(orgId: string, orgData: OrganizationUpdate): Promise<Organization> {
+    const response = await this.fetchWithAuth(`/organizations/${orgId}`, {
+      method: 'PUT',
+      body: JSON.stringify(orgData),
+    });
+    return response.json();
+  }
+
+  // Delete organization
+  async deleteOrganization(orgId: string): Promise<void> {
+    await this.fetchWithAuth(`/organizations/${orgId}`, {
+      method: 'DELETE',
+    });
+  }
 }
 
 // Export a singleton instance of the Organization service

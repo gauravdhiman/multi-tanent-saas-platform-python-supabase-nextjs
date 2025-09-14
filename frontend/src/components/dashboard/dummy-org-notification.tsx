@@ -74,7 +74,7 @@ export function DummyOrgNotification({ onDismiss }: DummyOrgNotificationProps) {
           </div>
           <div className="flex items-center lg:ml-4">
             <Link 
-              href="/settings/organization" 
+              href="/organization" 
               className="inline-flex items-center text-sm font-medium text-yellow-700 hover:text-yellow-900 bg-yellow-100 hover:bg-yellow-200 px-4 py-2 rounded-md transition-colors whitespace-nowrap"
             >
               Update Now

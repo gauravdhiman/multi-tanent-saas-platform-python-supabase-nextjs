@@ -1159,8 +1159,8 @@ class RBACService {
     if (!tracer) {
       const token = await this.getAccessToken();
       const url = organizationId 
-        ? `${this.baseUrl}/users/${userId}/has-permission/${permissionName}?organization_id=${organizationId}`
-        : `${this.baseUrl}/users/${userId}/has-permission/${permissionName}`;
+        ? `${this.baseUrl}/users/${userId}/permissions/${permissionName}?organization_id=${organizationId}`
+        : `${this.baseUrl}/users/${userId}/permissions/${permissionName}`;
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -1169,6 +1169,9 @@ class RBACService {
         },
       });
       if (!response.ok) {
+        if (response.status === 404 || response.status === 403) {
+          return false; // User doesn't have the permission
+        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       return response.json();
@@ -1182,14 +1185,20 @@ class RBACService {
           span.setAttribute('organization.id', organizationId);
         }
         const url = organizationId 
-          ? `/users/${userId}/has-permission/${permissionName}?organization_id=${organizationId}`
-          : `/users/${userId}/has-permission/${permissionName}`;
+          ? `/users/${userId}/permissions/${permissionName}?organization_id=${organizationId}`
+          : `/users/${userId}/permissions/${permissionName}`;
         const response = await this.fetchWithAuth(url);
         const result = await response.json();
         span.setAttribute('permission.granted', result);
         span.setStatus({ code: SpanStatusCode.OK });
         return result;
       } catch (error) {
+        // If it's a 404 or 403, the user doesn't have the permission
+        if (error instanceof Error && (error.message.includes('404') || error.message.includes('403'))) {
+          span.setAttribute('permission.granted', false);
+          span.setStatus({ code: SpanStatusCode.OK });
+          return false;
+        }
         rbacErrorsCounter?.add(1, { operation: 'userHasPermission', error: 'exception' });
         span.setStatus({ code: SpanStatusCode.ERROR, message: error instanceof Error ? error.message : String(error) });
         throw error;
@@ -1222,8 +1231,8 @@ class RBACService {
     if (!tracer) {
       const token = await this.getAccessToken();
       const url = organizationId 
-        ? `${this.baseUrl}/users/${userId}/has-role/${roleName}?organization_id=${organizationId}`
-        : `${this.baseUrl}/users/${userId}/has-role/${roleName}`;
+        ? `${this.baseUrl}/users/${userId}/roles/${roleName}?organization_id=${organizationId}`
+        : `${this.baseUrl}/users/${userId}/roles/${roleName}`;
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -1232,9 +1241,13 @@ class RBACService {
         },
       });
       if (!response.ok) {
+        if (response.status === 404) {
+          return false; // User doesn't have the role
+        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      return response.json();
+      // If we get a 200 response, the user has the role
+      return true;
     }
     
     return await tracer.startActiveSpan('rbac.userHasRole', async (span) => {
@@ -1245,14 +1258,19 @@ class RBACService {
           span.setAttribute('organization.id', organizationId);
         }
         const url = organizationId 
-          ? `/users/${userId}/has-role/${roleName}?organization_id=${organizationId}`
-          : `/users/${userId}/has-role/${roleName}`;
+          ? `/users/${userId}/roles/${roleName}?organization_id=${organizationId}`
+          : `/users/${userId}/roles/${roleName}`;
         const response = await this.fetchWithAuth(url);
-        const result = await response.json();
-        span.setAttribute('role.granted', result);
+        span.setAttribute('role.granted', true);
         span.setStatus({ code: SpanStatusCode.OK });
-        return result;
+        return true;
       } catch (error) {
+        // If it's a 404, the user doesn't have the role
+        if (error instanceof Error && error.message.includes('404')) {
+          span.setAttribute('role.granted', false);
+          span.setStatus({ code: SpanStatusCode.OK });
+          return false;
+        }
         rbacErrorsCounter?.add(1, { operation: 'userHasRole', error: 'exception' });
         span.setStatus({ code: SpanStatusCode.ERROR, message: error instanceof Error ? error.message : String(error) });
         throw error;
