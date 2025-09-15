@@ -2,7 +2,7 @@
 Pydantic models for User Role management in RBAC.
 """
 
-from typing import Optional, List
+from typing import Optional
 from pydantic import BaseModel, Field
 from uuid import UUID
 from datetime import datetime
@@ -44,4 +44,4 @@ class UserWithRoles(BaseModel):
     is_verified: bool = Field(default=False, description="Whether the user's email is verified")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
-    roles: List[RoleWithPermissions] = Field(default=[], description="List of roles assigned to this user")
+    roles: list[RoleWithPermissions] = Field(default=[], description="list of roles assigned to this user")

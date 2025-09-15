@@ -2,7 +2,7 @@
 Pydantic models for Role management in RBAC.
 """
 
-from typing import Optional, List
+from typing import Optional
 from pydantic import BaseModel, Field
 from uuid import UUID
 from datetime import datetime
@@ -38,4 +38,4 @@ class Role(RoleBase):
 
 class RoleWithPermissions(Role):
     """Model for a role with its associated permissions."""
-    permissions: List[Permission] = Field(default=[], description="List of permissions assigned to this role")
+    permissions: list[Permission] = Field(default=[], description="list of permissions assigned to this role")

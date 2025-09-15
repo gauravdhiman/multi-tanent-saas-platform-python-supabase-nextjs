@@ -85,8 +85,7 @@ Build a production-grade, multi-tenant SaaS web application that supports organi
 - Define plan tiers with pricing, included credits, features, interval (monthly/annual).
 - Credit allocation and tracking per tenant (credit_balance, credit_transactions).
 - Usage-monitoring and consumption tracking.
-- Lifecycle: trial, active, cancelled, past_due, expired.
-- Support pro-rating for upgrades/downgrades.
+- Lifecycle: trial, active, cancelled, past_due, expired etc.
 - Webhook-driven updates from Stripe to handle lifecycle and billing events.
 
 #### Notifications

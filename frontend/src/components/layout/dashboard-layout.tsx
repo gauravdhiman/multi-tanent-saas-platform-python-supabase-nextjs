@@ -111,25 +111,45 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       .slice(0, 2);
   };
 
-  const getCurrentPageTitle = () => {
-    if (pathname === '/dashboard') return 'Dashboard';
-    if (pathname === '/organization') return 'Organization';
-    if (pathname === '/organization/members') return 'Organization › Members';
-    if (pathname === '/organization/settings') return 'Organization › Settings';
-    if (pathname === '/organizations') return 'Organizations';
-    if (pathname === '/users') return 'Users';
-    if (pathname === '/billing') return 'Billing';
-    if (pathname === '/settings') return 'Settings';
+  const getBreadcrumbs = () => {
+    const breadcrumbs = [];
     
-    // Handle dynamic routes
-    if (pathname.startsWith('/organization')) {
-      if (pathname.includes('/members')) return 'Organization › Members';
-      if (pathname.includes('/settings')) return 'Organization › Settings';
-      return 'Organization';
+    if (pathname === '/dashboard') {
+      breadcrumbs.push({ name: 'Dashboard', href: null });
+    } else if (pathname === '/organization') {
+      breadcrumbs.push({ name: 'Organization', href: null });
+    } else if (pathname === '/organization/members') {
+      breadcrumbs.push({ name: 'Organization', href: '/organization' });
+      breadcrumbs.push({ name: 'Members', href: null });
+    } else if (pathname === '/organization/settings') {
+      breadcrumbs.push({ name: 'Organization', href: '/organization' });
+      breadcrumbs.push({ name: 'Settings', href: null });
+    } else if (pathname === '/organizations') {
+      breadcrumbs.push({ name: 'Organizations', href: null });
+    } else if (pathname === '/users') {
+      breadcrumbs.push({ name: 'Users', href: null });
+    } else if (pathname === '/billing') {
+      breadcrumbs.push({ name: 'Billing', href: null });
+    } else if (pathname === '/settings') {
+      breadcrumbs.push({ name: 'Settings', href: null });
+    } else if (pathname.startsWith('/organization')) {
+      // Handle dynamic organization routes
+      if (pathname.includes('/members')) {
+        breadcrumbs.push({ name: 'Organization', href: '/organization' });
+        breadcrumbs.push({ name: 'Members', href: null });
+      } else if (pathname.includes('/settings')) {
+        breadcrumbs.push({ name: 'Organization', href: '/organization' });
+        breadcrumbs.push({ name: 'Settings', href: null });
+      } else {
+        breadcrumbs.push({ name: 'Organization', href: null });
+      }
+    } else if (pathname.startsWith('/organizations')) {
+      breadcrumbs.push({ name: 'Organizations', href: null });
+    } else {
+      breadcrumbs.push({ name: 'Dashboard', href: null });
     }
-    if (pathname.startsWith('/organizations')) return 'Organizations';
     
-    return 'Dashboard';
+    return breadcrumbs;
   };
 
   return (
@@ -220,9 +240,31 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="px-6 py-4 flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div>
-                <h1 className="text-xl font-semibold text-foreground">
-                  {getCurrentPageTitle()}
-                </h1>
+                <nav className="flex" aria-label="Breadcrumb">
+                  <ol className="inline-flex items-center space-x-1 md:space-x-2">
+                    {getBreadcrumbs().map((breadcrumb, index) => (
+                      <li key={index} className="inline-flex items-center">
+                        {index > 0 && (
+                          <svg className="w-3 h-3 text-muted-foreground mx-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
+                            <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 9 4-4-4-4"/>
+                          </svg>
+                        )}
+                        {breadcrumb.href ? (
+                          <button
+                            onClick={() => router.push(breadcrumb.href!)}
+                            className="text-xl font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            {breadcrumb.name}
+                          </button>
+                        ) : (
+                          <span className="text-xl font-semibold text-foreground">
+                            {breadcrumb.name}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                </nav>
               </div>
             </div>
             <div className="flex items-center space-x-4">

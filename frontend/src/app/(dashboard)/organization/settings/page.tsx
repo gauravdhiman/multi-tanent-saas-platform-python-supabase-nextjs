@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { organizationService } from '@/services/organization-service';
 import { rbacService } from '@/services/rbac-service';
@@ -41,11 +41,7 @@ export default function OrganizationSettingsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    loadOrganizationData();
-  }, [user]);
-
-  const loadOrganizationData = async () => {
+  const loadOrganizationData = useCallback( async () => {
     if (!user) return;
 
     try {
@@ -68,9 +64,13 @@ export default function OrganizationSettingsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  const checkUserPermissions = async () => {
+  useEffect(() => {
+    loadOrganizationData();
+  }, [user, loadOrganizationData]);
+
+  const checkUserPermissions = useCallback(async () => {
     if (!user || !organization) return;
 
     try {
@@ -115,11 +115,11 @@ export default function OrganizationSettingsPage() {
         isOrgAdmin: false
       });
     }
-  };
+  }, [user, organization]);
 
   useEffect(() => {
     checkUserPermissions();
-  }, [user, organization]);
+  }, [user, organization, checkUserPermissions]);
 
   const handleSave = async () => {
     setSaving(true);

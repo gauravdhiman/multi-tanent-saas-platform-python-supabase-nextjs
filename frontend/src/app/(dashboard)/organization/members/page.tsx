@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { organizationService } from '@/services/organization-service';
 import { rbacService } from '@/services/rbac-service';
@@ -30,11 +30,7 @@ export default function OrganizationMembersPage() {
     isOrgAdmin: false
   });
 
-  useEffect(() => {
-    loadData();
-  }, [user]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -70,9 +66,13 @@ export default function OrganizationMembersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  const checkUserPermissions = async () => {
+  useEffect(() => {
+    loadData();
+  }, [user, loadData]);
+
+  const checkUserPermissions = useCallback(async () => {
     if (!user || !organization) return;
 
     try {
@@ -114,11 +114,11 @@ export default function OrganizationMembersPage() {
         isOrgAdmin: false
       });
     }
-  };
+  }, [user, organization]);
 
   useEffect(() => {
     checkUserPermissions();
-  }, [user, organization]);
+  }, [user, organization, checkUserPermissions]);
 
   if (loading) {
     return (
@@ -160,8 +160,8 @@ export default function OrganizationMembersPage() {
               <Users className="h-8 w-8 text-blue-600" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Members</h1>
-              <p className="text-gray-600">Manage organization members and their roles</p>
+              <h1 className="text-3xl font-bold text-foreground">{organization?.name || 'Organization'} Members</h1>
+              <p className="text-muted-foreground">Manage organization members and their roles</p>
             </div>
           </div>
 

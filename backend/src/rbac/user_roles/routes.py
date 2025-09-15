@@ -2,7 +2,7 @@
 User Role API routes for RBAC.
 """
 
-from typing import List, Optional
+from typing import Optional
 from uuid import UUID
 from fastapi import APIRouter, HTTPException, status, Depends
 from opentelemetry import trace
@@ -139,7 +139,7 @@ async def remove_role_from_user(user_role_id: UUID, current_user_id: UUID = Depe
     return None
 
 
-@user_role_router.get("/users/{user_id}/roles", response_model=List[Role])
+@user_role_router.get("/users/{user_id}/roles", response_model=list[Role])
 @tracer.start_as_current_span("rbac.user_roles.get_roles_for_user")
 async def get_roles_for_user(
     user_id: UUID, 
@@ -190,7 +190,7 @@ async def get_roles_for_user(
     return roles
 
 
-@user_role_router.get("/users/{user_id}/roles-with-permissions", response_model=List[RoleWithPermissions])
+@user_role_router.get("/users/{user_id}/roles-with-permissions", response_model=list[RoleWithPermissions])
 @tracer.start_as_current_span("rbac.user_roles.get_user_roles_with_permissions")
 async def get_user_roles_with_permissions(
     user_id: UUID, 

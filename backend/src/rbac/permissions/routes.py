@@ -2,7 +2,6 @@
 Permission API routes for RBAC.
 """
 
-from typing import List
 from uuid import UUID
 from fastapi import APIRouter, HTTPException, status, Depends
 from opentelemetry import trace
@@ -78,7 +77,7 @@ async def get_permission(permission_id: UUID, current_user_id: UUID = Depends(ge
     return permission
 
 
-@permission_router.get("/", response_model=List[Permission])
+@permission_router.get("/", response_model=list[Permission])
 @tracer.start_as_current_span("rbac.permissions.get_all_permissions")
 async def get_all_permissions(current_user_id: UUID = Depends(get_current_user_id)):
     """Get all permissions (requires permission:read permission)."""
@@ -249,7 +248,7 @@ async def remove_permission_from_role(role_id: UUID, permission_id: UUID, curren
     return None
 
 
-@permission_router.get("/roles/{role_id}/permissions", response_model=List[Permission])
+@permission_router.get("/roles/{role_id}/permissions", response_model=list[Permission])
 @tracer.start_as_current_span("rbac.permissions.get_permissions_for_role")
 async def get_permissions_for_role(role_id: UUID, current_user_id: UUID = Depends(get_current_user_id)):
     """Get all permissions for a role (requires permission:read permission)."""

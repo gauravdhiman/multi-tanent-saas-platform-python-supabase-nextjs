@@ -3,7 +3,7 @@ Organization service for managing organizations in a multi-tenant SaaS platform.
 """
 
 import logging
-from typing import List, Optional, Tuple
+from typing import Optional
 from uuid import UUID
 from opentelemetry import trace, metrics
 from config import supabase_config
@@ -44,7 +44,7 @@ class OrganizationService:
         return self.supabase_config.client
     
     @tracer.start_as_current_span("organization.create_organization")
-    async def create_organization(self, org_data: OrganizationCreate) -> Tuple[Optional[Organization], Optional[str]]:
+    async def create_organization(self, org_data: OrganizationCreate) -> tuple[Optional[Organization], Optional[str]]:
         """Create a new organization."""
         organization_operations_counter.add(1, {"operation": "create_organization"})
         
@@ -86,7 +86,7 @@ class OrganizationService:
             return None, str(e)
     
     @tracer.start_as_current_span("organization.get_organization_by_id")
-    async def get_organization_by_id(self, org_id: UUID) -> Tuple[Optional[Organization], Optional[str]]:
+    async def get_organization_by_id(self, org_id: UUID) -> tuple[Optional[Organization], Optional[str]]:
         """Get an organization by its ID."""
         organization_operations_counter.add(1, {"operation": "get_organization_by_id"})
         
@@ -122,7 +122,7 @@ class OrganizationService:
             return None, str(e)
     
     @tracer.start_as_current_span("organization.get_organization_by_slug")
-    async def get_organization_by_slug(self, slug: str) -> Tuple[Optional[Organization], Optional[str]]:
+    async def get_organization_by_slug(self, slug: str) -> tuple[Optional[Organization], Optional[str]]:
         """Get an organization by its slug."""
         organization_operations_counter.add(1, {"operation": "get_organization_by_slug"})
         
@@ -158,7 +158,7 @@ class OrganizationService:
             return None, str(e)
     
     @tracer.start_as_current_span("organization.get_all_organizations")
-    async def get_all_organizations(self) -> Tuple[List[Organization], Optional[str]]:
+    async def get_all_organizations(self) -> tuple[list[Organization], Optional[str]]:
         """Get all organizations."""
         organization_operations_counter.add(1, {"operation": "get_all_organizations"})
         
@@ -185,7 +185,7 @@ class OrganizationService:
             return [], str(e)
     
     @tracer.start_as_current_span("organization.update_organization")
-    async def update_organization(self, org_id: UUID, org_data: OrganizationUpdate) -> Tuple[Optional[Organization], Optional[str]]:
+    async def update_organization(self, org_id: UUID, org_data: OrganizationUpdate) -> tuple[Optional[Organization], Optional[str]]:
         """Update an organization."""
         organization_operations_counter.add(1, {"operation": "update_organization"})
         
@@ -236,7 +236,7 @@ class OrganizationService:
             return None, str(e)
     
     @tracer.start_as_current_span("organization.delete_organization")
-    async def delete_organization(self, org_id: UUID) -> Tuple[bool, Optional[str]]:
+    async def delete_organization(self, org_id: UUID) -> tuple[bool, Optional[str]]:
         """Delete an organization."""
         organization_operations_counter.add(1, {"operation": "delete_organization"})
         

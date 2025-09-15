@@ -2,7 +2,6 @@
 Authentication API routes.
 """
 
-from typing import Dict
 from fastapi import APIRouter, status, Header
 from fastapi.responses import JSONResponse
 from opentelemetry import trace
@@ -143,7 +142,7 @@ async def sign_out(authorization: str = Header(None)) -> JSONResponse:
     500: {"model": ErrorResponse, "description": "Internal server error"}
 })
 @tracer.start_as_current_span("auth.routes.refresh_token")
-async def refresh_token(request: Dict[str, str]) -> JSONResponse:
+async def refresh_token(request: dict[str, str]) -> JSONResponse:
     """
     Refresh access token using refresh token.
     
@@ -206,20 +205,19 @@ async def get_current_user(authorization: str = Header(None)) -> JSONResponse:
     access_token = authorization.replace("Bearer ", "")
     current_span.set_attribute("token.provided", True)
     
-    user_profile, error = await auth_service.get_current_user(access_token)
+    user_profile, error = await auth_service.get_user(access_token)
     
     if error:
-        status_code = status.HTTP_401_UNAUTHORIZED
-        if error.error == "internal_error":
-            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        status_code = error.status_code
+        if error.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
             current_span.set_attribute("error.type", "internal_error")
         else:
             current_span.set_attribute("error.type", "invalid_token")
         
-        current_span.set_status(trace.Status(trace.StatusCode.ERROR, error.message))
+        current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(error.detail)))
         return JSONResponse(
             status_code=status_code,
-            content=error.model_dump()
+            content={"error": "authentication_failed", "message": str(error.detail)}
         )
     
     current_span.set_attribute("user.id", str(user_profile.id))

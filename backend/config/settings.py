@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     supabase_service_key: Optional[str] = Field(default=None, description="Supabase service key")
     supabase_anon_key: Optional[str] = Field(default=None, description="Supabase anonymous key")
     
+    # Stripe Settings
+    stripe_secret_key: Optional[str] = Field(default=None, description="Stripe secret key")
+    stripe_webhook_secret: Optional[str] = Field(default=None, description="Stripe webhook endpoint secret")
+    
     # OpenTelemetry Settings
     new_relic_license_key: Optional[str] = Field(default=None, description="New Relic license key")
     otel_enabled: bool = Field(default=False, description="Enable OpenTelemetry")

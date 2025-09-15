@@ -22,6 +22,9 @@ redis==5.2.1
 # JSON Web Token support (for future auth)
 PyJWT==2.10.1
 
+# Stripe integration for payments
+stripe==12.5.1
+
 # HTTP client library (required by OpenTelemetry requests instrumentation)
 requests==2.32.3
 

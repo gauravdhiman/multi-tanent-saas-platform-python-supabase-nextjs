@@ -1,232 +1,325 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   CreditCard, 
-  Download, 
+  Zap, 
   Calendar, 
-  TrendingUp, 
-  DollarSign,
-  Users,
-  Zap
+  RefreshCw,
+  Loader2,
+  AlertTriangle
 } from 'lucide-react';
+import { billingService } from '@/services/billing-service';
+import { useAuth } from '@/contexts/auth-context';
+import { useOrganization } from '@/contexts/organization-context';
+import { OrganizationBillingSummary } from '@/types/billing';
+import { PlanSelection } from '@/components/billing/plan-selection';
+import { CreditPurchase } from '@/components/billing/credit-purchase';
+import { SubscriptionManagement } from '@/components/billing/subscription-management';
+import { OrganizationSelector } from '@/components/organizations/organization-selector';
+import { toast } from 'sonner';
 
 export default function BillingPage() {
-  return (
-    <div className="p-6">
-      {/* Page Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-4">
-            <div className="bg-primary/10 p-3 rounded-lg">
-              <CreditCard className="h-8 w-8 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">Billing</h1>
-              <p className="text-muted-foreground">Manage your subscription and billing information</p>
-            </div>
-          </div>
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { currentOrganization, loading: orgLoading } = useOrganization();
+  const [billingSummary, setBillingSummary] = useState<OrganizationBillingSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('overview');
 
-          <Button className="flex items-center space-x-2">
-            <Download className="h-4 w-4" />
-            <span>Download Invoice</span>
+  const loadBillingData = useCallback(async () => {
+    if (!currentOrganization) {
+      setError('No organization selected');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const summary = await billingService.getBillingSummary(currentOrganization.id);
+      setBillingSummary(summary);
+    } catch (err: unknown) {
+      console.error('Error loading billing data:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      if (errorMessage.includes('Authentication required')) {
+        setError('Please sign in to access billing information');
+      } else if (errorMessage.includes('Access denied')) {
+        setError('You do not have permission to access billing information for this organization');
+      } else {
+        setError('Failed to load billing information. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [currentOrganization]);
+
+  useEffect(() => {
+    if (isAuthenticated && !authLoading && !orgLoading && currentOrganization) {
+      loadBillingData();
+    } else if (!authLoading && !isAuthenticated) {
+      setLoading(false);
+      setError('Please sign in to access billing information');
+    } else if (!authLoading && !orgLoading && isAuthenticated && !currentOrganization) {
+      setLoading(false);
+      setError('No organization selected. Please select an organization to access billing information.');
+    }
+  }, [isAuthenticated, authLoading, orgLoading, currentOrganization, loadBillingData]);
+
+  // Set initial tab based on subscription status
+  useEffect(() => {
+    if (billingSummary !== null) {
+      const hasActiveSubscription = billingSummary?.subscription &&
+        ['active', 'trial'].includes(billingSummary.subscription.status);
+      setActiveTab(hasActiveSubscription ? "overview" : "plans");
+    }
+  }, [billingSummary]);
+
+  const refresh = async () => {
+    setRefreshing(true);
+    await loadBillingData();
+    setRefreshing(false);
+    toast.success('Billing data refreshed');
+  };
+
+  const formatCurrency = (amount: number, currency = 'USD') => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency
+    }).format(amount / 100);
+  };
+
+  const formatDate = (date: string | Date) => {
+    return new Date(date).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  if (authLoading || orgLoading || loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin mr-2" />
+          <span>Loading billing information...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Alert className="border-red-200 bg-red-50">
+          <AlertTriangle className="h-4 w-4 text-red-600" />
+          <AlertDescription className="text-red-800">{error}</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  const hasActiveSubscription = billingSummary?.subscription && 
+    ['active', 'trial'].includes(billingSummary.subscription.status);
+
+  return (
+    <div className="container mx-auto px-4 py-8 space-y-8">
+      {/* Header */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Billing & Subscriptions</h1>
+            <p className="text-muted-foreground">
+              Manage your subscription, credits, and billing information
+            </p>
+          </div>
+          <Button 
+            variant="outline" 
+            onClick={refresh}
+            disabled={refreshing}
+          >
+            {refreshing ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4 mr-2" />
+            )}
+            Refresh
           </Button>
+        </div>
+        
+        {/* Organization Selector */}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>Organization:</span>
+          <OrganizationSelector />
         </div>
       </div>
 
-      {/* Current Plan */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Current Plan</span>
-              <Badge className="bg-green-100 text-green-800">Active</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-2xl font-bold text-foreground">Professional Plan</h3>
-                <p className="text-muted-foreground">Perfect for growing teams</p>
+      {/* Overview Cards */}
+      {billingSummary && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Current Plan */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Current Plan</CardTitle>
+              <CreditCard className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {billingSummary.subscription?.plan?.name || 'No Plan'}
               </div>
-              
-              <div className="flex items-baseline space-x-2">
-                <span className="text-3xl font-bold text-foreground">$49</span>
-                <span className="text-muted-foreground">per month</span>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Users</span>
-                  <span className="text-sm font-medium text-foreground">24 / 50</span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div className="bg-primary h-2 rounded-full" style={{ width: '48%' }}></div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Storage</span>
-                  <span className="text-sm font-medium text-foreground">12.5 GB / 100 GB</span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div className="bg-primary h-2 rounded-full" style={{ width: '12.5%' }}></div>
-                </div>
-              </div>
-
-              <div className="pt-4 space-y-2">
-                <Button className="w-full">Upgrade Plan</Button>
-                <Button variant="outline" className="w-full">Change Plan</Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-600">Next Billing Date</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Calendar className="h-5 w-5 text-gray-400" />
-                <span className="text-lg font-semibold">March 15, 2024</span>
-              </div>
-              <div className="text-2xl font-bold text-gray-900">$49.00</div>
-              <p className="text-sm text-gray-600">
-                Your next payment will be processed automatically
+              <p className="text-xs text-muted-foreground">
+                {billingSummary.subscription?.status && (
+                  <Badge className="capitalize">
+                    {billingSummary.subscription.status}
+                  </Badge>
+                )}
               </p>
+            </CardContent>
+          </Card>
+
+          {/* Credit Balance */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Credit Balance</CardTitle>
+              <Zap className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {billingSummary.credit_balance?.toLocaleString() || '0'}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Available credits
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Next Billing */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Next Billing</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {billingSummary.next_billing_date 
+                  ? formatDate(billingSummary.next_billing_date)
+                  : 'N/A'
+                }
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {billingSummary.amount_due 
+                  ? formatCurrency(billingSummary.amount_due)
+                  : 'No amount due'
+                }
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Main Content Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="plans">Plans</TabsTrigger>
+          <TabsTrigger value="credits">Credits</TabsTrigger>
+          {hasActiveSubscription && (
+            <TabsTrigger value="manage">Manage</TabsTrigger>
+          )}
+        </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-6">
+          {hasActiveSubscription ? (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Subscription Overview</CardTitle>
+                  <CardDescription>
+                    Current subscription details and usage information
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {billingSummary?.subscription && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <h4 className="font-semibold">Plan Details</h4>
+                          <p>Plan: {billingSummary.subscription.plan?.name}</p>
+                          <p>Status: {billingSummary.subscription.status}</p>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold">Usage This Period</h4>
+                          <p>Credits Used: {billingSummary.current_period_usage?.toLocaleString() || '0'}</p>
+                          <p>Credits Remaining: {billingSummary.credit_balance?.toLocaleString() || '0'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>Welcome to Billing</CardTitle>
+                <CardDescription>
+                  Choose a plan to get started with your subscription
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground mb-4">
+                  You don&apos;t have an active subscription yet. Browse our plans to get started.
+                </p>
+                <Button onClick={() => setActiveTab('plans')}>
+                  View Plans
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
 
-      {/* Usage Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">This Month</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center space-x-2">
-              <DollarSign className="h-4 w-4 text-green-500" />
-              <div className="text-2xl font-bold">$49.00</div>
-            </div>
-            <p className="text-xs text-gray-500">Current billing period</p>
-          </CardContent>
-        </Card>
+        {/* Plans Tab */}
+        <TabsContent value="plans" className="space-y-6">
+          {currentOrganization && (
+            <PlanSelection 
+              organizationId={currentOrganization.id}
+              currentSubscription={billingSummary?.subscription}
+              onPlanSelected={() => loadBillingData()}
+            />
+          )}
+        </TabsContent>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Active Users</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center space-x-2">
-              <Users className="h-4 w-4 text-blue-500" />
-              <div className="text-2xl font-bold">24</div>
-            </div>
-            <p className="text-xs text-gray-500">48% of plan limit</p>
-          </CardContent>
-        </Card>
+        {/* Credits Tab */}
+        <TabsContent value="credits" className="space-y-6">
+          {currentOrganization && (
+            <CreditPurchase 
+              organizationId={currentOrganization.id}
+              onCreditsPurchased={() => loadBillingData()}
+            />
+          )}
+        </TabsContent>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">API Calls</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center space-x-2">
-              <Zap className="h-4 w-4 text-yellow-500" />
-              <div className="text-2xl font-bold">15.2K</div>
-            </div>
-            <p className="text-xs text-gray-500">This month</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Growth</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center space-x-2">
-              <TrendingUp className="h-4 w-4 text-green-500" />
-              <div className="text-2xl font-bold">+12%</div>
-            </div>
-            <p className="text-xs text-gray-500">vs last month</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Billing History */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Billing History</CardTitle>
-          <CardDescription>
-            Your recent billing statements and invoices
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Date</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Description</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Amount</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Status</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">Invoice</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b">
-                  <td className="px-4 py-3 text-sm text-gray-900">Feb 15, 2024</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">Professional Plan - Monthly</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">$49.00</td>
-                  <td className="px-4 py-3">
-                    <Badge className="bg-green-100 text-green-800">Paid</Badge>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Button variant="ghost" size="sm">
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </td>
-                </tr>
-
-                <tr className="border-b">
-                  <td className="px-4 py-3 text-sm text-gray-900">Jan 15, 2024</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">Professional Plan - Monthly</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">$49.00</td>
-                  <td className="px-4 py-3">
-                    <Badge className="bg-green-100 text-green-800">Paid</Badge>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Button variant="ghost" size="sm">
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </td>
-                </tr>
-
-                <tr className="border-b">
-                  <td className="px-4 py-3 text-sm text-gray-900">Dec 15, 2023</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">Professional Plan - Monthly</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">$49.00</td>
-                  <td className="px-4 py-3">
-                    <Badge className="bg-green-100 text-green-800">Paid</Badge>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Button variant="ghost" size="sm">
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+        {/* Manage Tab */}
+        {hasActiveSubscription && (
+          <TabsContent value="manage" className="space-y-6">
+            {billingSummary?.subscription && currentOrganization && (
+              <SubscriptionManagement 
+                organizationId={currentOrganization.id}
+                subscription={billingSummary.subscription}
+                onSubscriptionUpdated={() => loadBillingData()}
+              />
+            )}
+          </TabsContent>
+        )}
+      </Tabs>
     </div>
   );
 }

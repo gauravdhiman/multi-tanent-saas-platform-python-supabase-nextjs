@@ -3,7 +3,7 @@ User Role service for managing user role assignments and access control in the R
 """
 
 import logging
-from typing import List, Optional, Tuple, Any
+from typing import Optional, Any
 from uuid import UUID
 from opentelemetry import trace, metrics
 from config import supabase_config
@@ -46,7 +46,7 @@ class UserRoleService:
         return self.supabase_config.client
     
     @tracer.start_as_current_span("user_role.assign_role_to_user")
-    async def assign_role_to_user(self, user_role_data: UserRoleCreate) -> Tuple[Optional[UserRole], Optional[str]]:
+    async def assign_role_to_user(self, user_role_data: UserRoleCreate) -> tuple[Optional[UserRole], Optional[str]]:
         """Assign a role to a user."""
         user_role_operations_counter.add(1, {"operation": "assign_role_to_user"})
         
@@ -91,7 +91,7 @@ class UserRoleService:
             return None, str(e)
     
     @tracer.start_as_current_span("user_role.update_user_role")
-    async def update_user_role(self, user_role_id: UUID, user_role_data: UserRoleUpdate) -> Tuple[Optional[UserRole], Optional[str]]:
+    async def update_user_role(self, user_role_id: UUID, user_role_data: UserRoleUpdate) -> tuple[Optional[UserRole], Optional[str]]:
         """Update a user role assignment."""
         user_role_operations_counter.add(1, {"operation": "update_user_role"})
         
@@ -136,7 +136,7 @@ class UserRoleService:
             return None, str(e)
     
     @tracer.start_as_current_span("user_role.remove_role_from_user")
-    async def remove_role_from_user(self, user_role_id: UUID) -> Tuple[bool, Optional[str]]:
+    async def remove_role_from_user(self, user_role_id: UUID) -> tuple[bool, Optional[str]]:
         """Remove a role from a user."""
         user_role_operations_counter.add(1, {"operation": "remove_role_from_user"})
         
@@ -162,7 +162,7 @@ class UserRoleService:
             return False, str(e)
     
     @tracer.start_as_current_span("user_role.get_user_role_by_id")
-    async def get_user_role_by_id(self, user_role_id: UUID) -> Tuple[Optional[UserRole], Optional[str]]:
+    async def get_user_role_by_id(self, user_role_id: UUID) -> tuple[Optional[UserRole], Optional[str]]:
         """Get a user role assignment by its ID."""
         user_role_operations_counter.add(1, {"operation": "get_user_role_by_id"})
         
@@ -197,7 +197,7 @@ class UserRoleService:
             return None, str(e)
     
     @tracer.start_as_current_span("user_role.get_roles_for_user")
-    async def get_roles_for_user(self, user_id: UUID, organization_id: Optional[UUID] = None) -> Tuple[List[Role], Optional[str]]:
+    async def get_roles_for_user(self, user_id: UUID, organization_id: Optional[UUID] = None) -> tuple[list[Role], Optional[str]]:
         """Get all roles for a user, optionally filtered by organization."""
         user_role_operations_counter.add(1, {"operation": "get_roles_for_user"})
         
@@ -238,7 +238,7 @@ class UserRoleService:
             return [], str(e)
     
     @tracer.start_as_current_span("user_role.get_user_roles_with_permissions")
-    async def get_user_roles_with_permissions(self, user_id: UUID, organization_id: Optional[UUID] = None) -> Tuple[List[RoleWithPermissions], Optional[str]]:
+    async def get_user_roles_with_permissions(self, user_id: UUID, organization_id: Optional[UUID] = None) -> tuple[list[RoleWithPermissions], Optional[str]]:
         """Get all roles with their permissions for a user."""
         user_role_operations_counter.add(1, {"operation": "get_user_roles_with_permissions"})
         
@@ -290,7 +290,7 @@ class UserRoleService:
             return [], str(e)
 
     @tracer.start_as_current_span("user_role.user_has_permission")
-    async def user_has_permission(self, user_id: UUID, permission_name: str, organization_id: Optional[UUID] = None) -> Tuple[bool, Optional[str]]:
+    async def user_has_permission(self, user_id: UUID, permission_name: str, organization_id: Optional[UUID] = None) -> tuple[bool, Optional[str]]:
         """Check if a user has a specific permission."""
         user_role_operations_counter.add(1, {"operation": "user_has_permission"})
         
@@ -342,7 +342,7 @@ class UserRoleService:
             return False, str(e)
 
     @tracer.start_as_current_span("user_role.user_has_role")
-    async def user_has_role(self, user_id: UUID, role_name: str, organization_id: Optional[UUID] = None) -> Tuple[bool, Optional[str]]:
+    async def user_has_role(self, user_id: UUID, role_name: str, organization_id: Optional[UUID] = None) -> tuple[bool, Optional[str]]:
         """Check if a user has a specific role."""
         user_role_operations_counter.add(1, {"operation": "user_has_role"})
         
@@ -389,7 +389,7 @@ class UserRoleService:
             return False, str(e)
 
     @tracer.start_as_current_span("user_role.get_organizations_for_user")
-    async def get_organizations_for_user(self, user_id: UUID) -> Tuple[List[Any], Optional[str]]:
+    async def get_organizations_for_user(self, user_id: UUID) -> tuple[list[Any], Optional[str]]:
         """Get all organizations for a user."""
         user_role_operations_counter.add(1, {"operation": "get_organizations_for_user"})
         

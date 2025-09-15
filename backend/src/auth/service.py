@@ -2,7 +2,7 @@
 Authentication service for handling user registration, login, and session management.
 """
 
-from typing import Tuple, Optional
+from typing import Optional
 from fastapi import HTTPException, status
 import logging
 from opentelemetry import trace, metrics
@@ -48,7 +48,7 @@ class AuthService:
         return self.supabase_config.client
     
     @tracer.start_as_current_span("auth.sign_up")
-    async def sign_up(self, request: SignUpRequest) -> Tuple[Optional[AuthResponse], Optional[HTTPException]]:
+    async def sign_up(self, request: SignUpRequest) -> tuple[Optional[AuthResponse], Optional[HTTPException]]:
         """
         Register a new user account.
         
@@ -56,7 +56,7 @@ class AuthService:
             request: SignUpRequest with user registration details
             
         Returns:
-            Tuple of (AuthResponse or None, HTTPException or None)
+            tuple of (AuthResponse or None, HTTPException or None)
         """
         # Record metrics
         auth_attempts_counter.add(1, {"operation": "signup", "source": "backend"})
@@ -177,7 +177,7 @@ class AuthService:
             )
     
     @tracer.start_as_current_span("auth.sign_in")
-    async def sign_in(self, request: SignInRequest) -> Tuple[Optional[AuthResponse], Optional[HTTPException]]:
+    async def sign_in(self, request: SignInRequest) -> tuple[Optional[AuthResponse], Optional[HTTPException]]:
         """
         Authenticate user with email and password.
         
@@ -185,7 +185,7 @@ class AuthService:
             request: SignInRequest with user credentials
             
         Returns:
-            Tuple of (AuthResponse or None, HTTPException or None)
+            tuple of (AuthResponse or None, HTTPException or None)
         """
         # Record metrics
         auth_attempts_counter.add(1, {"operation": "signin", "source": "backend"})
@@ -250,7 +250,7 @@ class AuthService:
             )
     
     @tracer.start_as_current_span("auth.sign_out")
-    async def sign_out(self, access_token: str) -> Tuple[bool, Optional[HTTPException]]:
+    async def sign_out(self, access_token: str) -> tuple[bool, Optional[HTTPException]]:
         """
         Sign out user and invalidate session.
         
@@ -258,7 +258,7 @@ class AuthService:
             access_token: User's access token
             
         Returns:
-            Tuple of (success boolean, HTTPException or None)
+            tuple of (success boolean, HTTPException or None)
         """
         # Record metrics
         auth_attempts_counter.add(1, {"operation": "signout", "source": "backend"})
@@ -269,11 +269,10 @@ class AuthService:
         logging.info("Attempting to sign out user")
         
         try:
-            # Set auth session for Supabase client
-            self.supabase.auth.set_session(access_token, None)
-            
-            # Sign out with Supabase Auth
-            self.supabase.auth.sign_out()
+            # Sign out by invalidating the token
+            # Note: We're not using set_session to avoid refresh_token requirement
+            # Instead, we'll invalidate the token directly
+            self.supabase.auth.sign_out(access_token)
             
             logging.info("User signed out successfully")
             current_span.set_status(trace.Status(trace.StatusCode.OK))
@@ -290,7 +289,7 @@ class AuthService:
             )
     
     @tracer.start_as_current_span("auth.refresh_token")
-    async def refresh_token(self, refresh_token: str) -> Tuple[Optional[AuthResponse], Optional[HTTPException]]:
+    async def refresh_token(self, refresh_token: str) -> tuple[Optional[AuthResponse], Optional[HTTPException]]:
         """
         Refresh access token using refresh token.
         
@@ -298,7 +297,7 @@ class AuthService:
             refresh_token: Valid refresh token
             
         Returns:
-            Tuple of (AuthResponse or None, HTTPException or None)
+            tuple of (AuthResponse or None, HTTPException or None)
         """
         # Record metrics
         auth_attempts_counter.add(1, {"operation": "refresh_token", "source": "backend"})
@@ -360,7 +359,7 @@ class AuthService:
             )
     
     @tracer.start_as_current_span("auth.get_user")
-    async def get_user(self, access_token: str) -> Tuple[Optional[UserProfile], Optional[HTTPException]]:
+    async def get_user(self, access_token: str) -> tuple[Optional[UserProfile], Optional[HTTPException]]:
         """
         Get current user profile.
         
@@ -368,7 +367,7 @@ class AuthService:
             access_token: User's access token
             
         Returns:
-            Tuple of (UserProfile or None, HTTPException or None)
+            tuple of (UserProfile or None, HTTPException or None)
         """
         # Record metrics
         auth_attempts_counter.add(1, {"operation": "get_user", "source": "backend"})
@@ -379,11 +378,20 @@ class AuthService:
         logging.info("Attempting to get user profile")
         
         try:
-            # Set auth session for Supabase client
-            self.supabase.auth.set_session(access_token, None)
+            # Validate token directly without setting session to avoid refresh_token requirement
+            # We'll decode the JWT and validate with Supabase API directly
+            user_response = self.supabase.auth.get_user(access_token)
             
-            # Get current user from Supabase Auth
-            user = self.supabase.auth.get_user().user
+            if not user_response or not user_response.user:
+                current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Invalid token"))
+                logging.warning("Failed to get user - invalid token or no user response")
+                auth_failure_counter.add(1, {"operation": "get_user", "error": "invalid_token"})
+                return None, HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid or expired token"
+                )
+            
+            user = user_response.user
             
             if not user:
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Invalid token"))
@@ -406,8 +414,9 @@ class AuthService:
                 email=user.email,
                 first_name=user_metadata.get("first_name", ""),
                 last_name=user_metadata.get("last_name", ""),
-                is_verified=user.email_confirmed_at is not None,
-                created_at=user.created_at
+                email_confirmed_at=user.email_confirmed_at.isoformat() if user.email_confirmed_at else None,
+                created_at=user.created_at.isoformat() if user.created_at else "",
+                updated_at=user.updated_at.isoformat() if user.updated_at else ""
             )
             
             current_span.set_status(trace.Status(trace.StatusCode.OK))

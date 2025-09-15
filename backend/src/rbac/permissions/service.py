@@ -3,7 +3,7 @@ Permission service for managing permissions in the RBAC system.
 """
 
 import logging
-from typing import List, Optional, Tuple
+from typing import Optional
 from uuid import UUID
 from opentelemetry import trace, metrics
 from config import supabase_config
@@ -44,7 +44,7 @@ class PermissionService:
         return self.supabase_config.client
     
     @tracer.start_as_current_span("permission.create_permission")
-    async def create_permission(self, perm_data: PermissionCreate) -> Tuple[Optional[Permission], Optional[str]]:
+    async def create_permission(self, perm_data: PermissionCreate) -> tuple[Optional[Permission], Optional[str]]:
         """Create a new permission."""
         permission_operations_counter.add(1, {"operation": "create_permission"})
         
@@ -86,7 +86,7 @@ class PermissionService:
             return None, str(e)
     
     @tracer.start_as_current_span("permission.get_permission_by_id")
-    async def get_permission_by_id(self, perm_id: UUID) -> Tuple[Optional[Permission], Optional[str]]:
+    async def get_permission_by_id(self, perm_id: UUID) -> tuple[Optional[Permission], Optional[str]]:
         """Get a permission by its ID."""
         permission_operations_counter.add(1, {"operation": "get_permission_by_id"})
         
@@ -122,7 +122,7 @@ class PermissionService:
             return None, str(e)
     
     @tracer.start_as_current_span("permission.get_permission_by_name")
-    async def get_permission_by_name(self, name: str) -> Tuple[Optional[Permission], Optional[str]]:
+    async def get_permission_by_name(self, name: str) -> tuple[Optional[Permission], Optional[str]]:
         """Get a permission by its name."""
         permission_operations_counter.add(1, {"operation": "get_permission_by_name"})
         
@@ -158,7 +158,7 @@ class PermissionService:
             return None, str(e)
     
     @tracer.start_as_current_span("permission.get_all_permissions")
-    async def get_all_permissions(self) -> Tuple[List[Permission], Optional[str]]:
+    async def get_all_permissions(self) -> tuple[list[Permission], Optional[str]]:
         """Get all permissions."""
         permission_operations_counter.add(1, {"operation": "get_all_permissions"})
         
@@ -185,7 +185,7 @@ class PermissionService:
             return [], str(e)
     
     @tracer.start_as_current_span("permission.update_permission")
-    async def update_permission(self, perm_id: UUID, perm_data: PermissionUpdate) -> Tuple[Optional[Permission], Optional[str]]:
+    async def update_permission(self, perm_id: UUID, perm_data: PermissionUpdate) -> tuple[Optional[Permission], Optional[str]]:
         """Update a permission."""
         permission_operations_counter.add(1, {"operation": "update_permission"})
         
@@ -235,7 +235,7 @@ class PermissionService:
             return None, str(e)
     
     @tracer.start_as_current_span("permission.delete_permission")
-    async def delete_permission(self, perm_id: UUID) -> Tuple[bool, Optional[str]]:
+    async def delete_permission(self, perm_id: UUID) -> tuple[bool, Optional[str]]:
         """Delete a permission."""
         permission_operations_counter.add(1, {"operation": "delete_permission"})
         
@@ -267,7 +267,7 @@ class PermissionService:
     # Role-Permission operations
     
     @tracer.start_as_current_span("permission.assign_permission_to_role")
-    async def assign_permission_to_role(self, role_id: UUID, permission_id: UUID) -> Tuple[Optional[RolePermission], Optional[str]]:
+    async def assign_permission_to_role(self, role_id: UUID, permission_id: UUID) -> tuple[Optional[RolePermission], Optional[str]]:
         """Assign a permission to a role."""
         permission_operations_counter.add(1, {"operation": "assign_permission_to_role"})
         
@@ -304,7 +304,7 @@ class PermissionService:
             return None, str(e)
     
     @tracer.start_as_current_span("permission.remove_permission_from_role")
-    async def remove_permission_from_role(self, role_id: UUID, permission_id: UUID) -> Tuple[bool, Optional[str]]:
+    async def remove_permission_from_role(self, role_id: UUID, permission_id: UUID) -> tuple[bool, Optional[str]]:
         """Remove a permission from a role."""
         permission_operations_counter.add(1, {"operation": "remove_permission_from_role"})
         
@@ -334,7 +334,7 @@ class PermissionService:
             return False, str(e)
     
     @tracer.start_as_current_span("permission.get_permissions_for_role")
-    async def get_permissions_for_role(self, role_id: UUID) -> Tuple[List[Permission], Optional[str]]:
+    async def get_permissions_for_role(self, role_id: UUID) -> tuple[list[Permission], Optional[str]]:
         """Get all permissions for a role."""
         permission_operations_counter.add(1, {"operation": "get_permissions_for_role"})
         

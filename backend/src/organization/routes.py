@@ -2,7 +2,6 @@
 Organization API routes for the multi-tenant SaaS platform.
 """
 
-from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, HTTPException, status, Depends
 from opentelemetry import trace
@@ -144,7 +143,7 @@ async def get_organization(org_id: UUID, current_user_id: UUID = Depends(get_cur
     return organization
 
 
-@organization_router.get("/", response_model=List[Organization])
+@organization_router.get("/", response_model=list[Organization])
 @tracer.start_as_current_span("organization.routes.get_all_organizations")
 async def get_all_organizations(current_user_id: UUID = Depends(get_current_user_id)):
     """Get all organizations the user has access to."""
@@ -152,7 +151,7 @@ async def get_all_organizations(current_user_id: UUID = Depends(get_current_user
     current_span.set_attribute("user.id", str(current_user_id))
     
     # Check if user has platform_admin role
-    has_role, error = await user_role_service.user_has_role(current_user_id, "platform_admin")
+    has_platform_admin_role, error = await user_role_service.user_has_role(current_user_id, "platform_admin")
     if error:
         current_span.set_status(trace.Status(trace.StatusCode.ERROR, error))
         raise HTTPException(
@@ -160,7 +159,7 @@ async def get_all_organizations(current_user_id: UUID = Depends(get_current_user
             detail=error
         )
     
-    if has_role:
+    if has_platform_admin_role:
         # Platform admin can see all organizations
         organizations, error = await organization_service.get_all_organizations()
         if error:

@@ -2,7 +2,6 @@
 Role API routes for RBAC.
 """
 
-from typing import List
 from uuid import UUID
 from fastapi import APIRouter, HTTPException, status, Depends
 from opentelemetry import trace
@@ -78,7 +77,7 @@ async def get_role(role_id: UUID, current_user_id: UUID = Depends(get_current_us
     return role
 
 
-@role_router.get("/", response_model=List[Role])
+@role_router.get("/", response_model=list[Role])
 @tracer.start_as_current_span("rbac.roles.get_all_roles")
 async def get_all_roles(current_user_id: UUID = Depends(get_current_user_id)):
     """Get all roles (requires role:read permission)."""

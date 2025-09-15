@@ -3,7 +3,7 @@ Role service for managing roles in the RBAC system.
 """
 
 import logging
-from typing import List, Optional, Tuple
+from typing import Optional
 from uuid import UUID
 from opentelemetry import trace, metrics
 from config import supabase_config
@@ -44,7 +44,7 @@ class RoleService:
         return self.supabase_config.client
     
     @tracer.start_as_current_span("role.create_role")
-    async def create_role(self, role_data: RoleCreate) -> Tuple[Optional[Role], Optional[str]]:
+    async def create_role(self, role_data: RoleCreate) -> tuple[Optional[Role], Optional[str]]:
         """Create a new role."""
         role_operations_counter.add(1, {"operation": "create_role"})
         
@@ -84,7 +84,7 @@ class RoleService:
             return None, str(e)
     
     @tracer.start_as_current_span("role.get_role_by_id")
-    async def get_role_by_id(self, role_id: UUID) -> Tuple[Optional[Role], Optional[str]]:
+    async def get_role_by_id(self, role_id: UUID) -> tuple[Optional[Role], Optional[str]]:
         """Get a role by its ID."""
         role_operations_counter.add(1, {"operation": "get_role_by_id"})
         
@@ -119,7 +119,7 @@ class RoleService:
             return None, str(e)
     
     @tracer.start_as_current_span("role.get_role_by_name")
-    async def get_role_by_name(self, name: str) -> Tuple[Optional[Role], Optional[str]]:
+    async def get_role_by_name(self, name: str) -> tuple[Optional[Role], Optional[str]]:
         """Get a role by its name."""
         role_operations_counter.add(1, {"operation": "get_role_by_name"})
         
@@ -154,7 +154,7 @@ class RoleService:
             return None, str(e)
     
     @tracer.start_as_current_span("role.get_all_roles")
-    async def get_all_roles(self) -> Tuple[List[Role], Optional[str]]:
+    async def get_all_roles(self) -> tuple[list[Role], Optional[str]]:
         """Get all roles."""
         role_operations_counter.add(1, {"operation": "get_all_roles"})
         
@@ -180,7 +180,7 @@ class RoleService:
             return [], str(e)
     
     @tracer.start_as_current_span("role.update_role")
-    async def update_role(self, role_id: UUID, role_data: RoleUpdate) -> Tuple[Optional[Role], Optional[str]]:
+    async def update_role(self, role_id: UUID, role_data: RoleUpdate) -> tuple[Optional[Role], Optional[str]]:
         """Update a role."""
         role_operations_counter.add(1, {"operation": "update_role"})
         
@@ -225,7 +225,7 @@ class RoleService:
             return None, str(e)
     
     @tracer.start_as_current_span("role.delete_role")
-    async def delete_role(self, role_id: UUID) -> Tuple[bool, Optional[str]]:
+    async def delete_role(self, role_id: UUID) -> tuple[bool, Optional[str]]:
         """Delete a role."""
         role_operations_counter.add(1, {"operation": "delete_role"})
         
