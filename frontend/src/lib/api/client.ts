@@ -38,13 +38,14 @@ class ApiClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    retryCount = 0
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
-    
+
     // Get authentication headers
     const authHeaders = await this.getAuthHeaders();
-    
+
     const config: RequestInit = {
       ...options,
       headers: {
@@ -56,7 +57,7 @@ class ApiClient {
 
     try {
       const response = await fetch(url, config);
-      
+
       // Handle different response types
       let data;
       const contentType = response.headers.get('content-type');
@@ -67,6 +68,24 @@ class ApiClient {
       }
 
       if (!response.ok) {
+        // Handle 401 - attempt token refresh and retry once
+        if (response.status === 401 && retryCount === 0) {
+          try {
+            const { data: { session }, error } = await supabase.auth.refreshSession();
+
+            if (!error && session?.access_token) {
+              // Retry with new token
+              return this.request<T>(endpoint, options, retryCount + 1);
+            } else {
+              console.warn('Token refresh failed:', error);
+              // Fall through to error handling
+            }
+          } catch (refreshError) {
+            console.warn('Token refresh error:', refreshError);
+            // Fall through to error handling
+          }
+        }
+
         // Handle specific error cases
         if (response.status === 401) {
           throw new Error('Authentication required. Please sign in.');
