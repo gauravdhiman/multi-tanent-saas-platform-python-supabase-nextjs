@@ -5,6 +5,7 @@ Pydantic models for authentication requests and responses.
 from typing import Optional
 from pydantic import BaseModel, EmailStr, Field, field_validator
 import re
+from src.rbac.roles.models import UserRoleWithPermissions
 
 
 class SignUpRequest(BaseModel):
@@ -66,7 +67,7 @@ class AuthResponse(BaseModel):
 
 class UserProfile(BaseModel):
     """User profile information."""
-    
+
     id: str = Field(..., description="User ID")
     email: str = Field(..., description="User email")
     first_name: str = Field(..., description="User first name")
@@ -75,6 +76,37 @@ class UserProfile(BaseModel):
     created_at: str = Field(..., description="Account creation timestamp")
     updated_at: str = Field(..., description="Last update timestamp")
     has_organizations: Optional[bool] = Field(None, description="Whether the user has organizations")
+    roles: list[UserRoleWithPermissions] = Field(default=[], description="User's roles with organization context")
+
+    def has_role(self, role_name: str, organization_id: Optional[str] = None) -> bool:
+        """Check if user has a specific role."""
+        for user_role in self.roles:
+            if user_role.role.name == role_name:
+                # If organization_id is specified, check if role is for that organization
+                if organization_id:
+                    # Check if this role is assigned to the user for the specific organization
+                    if str(user_role.organization_id) == organization_id:
+                        return True
+                else:
+                    # For platform-wide roles (organization_id is None)
+                    if role_name == "platform_admin" and user_role.organization_id is None:
+                        return True
+        return False
+
+    def has_permission(self, permission_name: str, organization_id: Optional[str] = None) -> bool:
+        """Check if user has a specific permission."""
+        for user_role in self.roles:
+            for permission in user_role.role.permissions:
+                if permission.name == permission_name:
+                    # If organization_id is specified, check if role is for that organization
+                    if organization_id:
+                        if str(user_role.organization_id) == organization_id:
+                            return True
+                    else:
+                        # For platform-wide permissions
+                        if user_role.role.name == "platform_admin" and user_role.organization_id is None:
+                            return True
+        return False
 
 
 class ErrorResponse(BaseModel):

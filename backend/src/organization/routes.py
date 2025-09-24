@@ -8,7 +8,8 @@ from opentelemetry import trace
 
 from src.organization.models import Organization, OrganizationCreate, OrganizationUpdate
 from src.organization.service import organization_service
-from src.auth.middleware import get_current_user_id
+from src.auth.middleware import get_authenticated_user
+from src.auth.models import UserProfile
 from src.rbac.roles.service import role_service
 from src.rbac.user_roles.service import user_role_service
 
@@ -21,15 +22,15 @@ organization_router = APIRouter(prefix="/organizations", tags=["Organizations"])
 
 @organization_router.post("/", response_model=Organization, status_code=status.HTTP_201_CREATED)
 @tracer.start_as_current_span("organization.routes.create_organization")
-async def create_organization(org_data: OrganizationCreate, current_user_id: UUID = Depends(get_current_user_id)):
+async def create_organization(org_data: OrganizationCreate, user_data: tuple[UUID, "UserProfile"] = Depends(get_authenticated_user)):
     """Create a new organization (requires platform_admin role)."""
+    current_user_id, user_profile = user_data
     current_span = trace.get_current_span()
     current_span.set_attribute("user.id", str(current_user_id))
     current_span.set_attribute("organization.name", org_data.name)
-    
+
     # Check if user has platform_admin role
-    has_role, error = await user_role_service.user_has_role(current_user_id, "platform_admin")
-    if error or not has_role:
+    if not user_profile.has_role("platform_admin"):
         current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Only platform administrators can create organizations"))
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -51,8 +52,9 @@ async def create_organization(org_data: OrganizationCreate, current_user_id: UUI
 
 @organization_router.post("/self", response_model=Organization, status_code=status.HTTP_201_CREATED)
 @tracer.start_as_current_span("organization.routes.create_self_organization")
-async def create_self_organization(org_data: OrganizationCreate, current_user_id: UUID = Depends(get_current_user_id)):
+async def create_self_organization(org_data: OrganizationCreate, user_data: tuple[UUID, UserProfile] = Depends(get_authenticated_user)):
     """Create a new organization for the current user and assign them as org_admin."""
+    current_user_id, _ = user_data
     current_span = trace.get_current_span()
     current_span.set_attribute("user.id", str(current_user_id))
     current_span.set_attribute("organization.name", org_data.name)
@@ -103,32 +105,21 @@ async def create_self_organization(org_data: OrganizationCreate, current_user_id
 
 @organization_router.get("/{org_id}", response_model=Organization)
 @tracer.start_as_current_span("organization.routes.get_organization")
-async def get_organization(org_id: UUID, current_user_id: UUID = Depends(get_current_user_id)):
+async def get_organization(org_id: UUID, user_data: tuple[UUID, UserProfile] = Depends(get_authenticated_user)):
     """Get an organization by ID."""
+    current_user_id, user_profile = user_data
     current_span = trace.get_current_span()
     current_span.set_attribute("user.id", str(current_user_id))
     current_span.set_attribute("organization.id", str(org_id))
-    
+
     # Check if user has permission to view organizations
-    has_permission, error = await user_role_service.user_has_permission(current_user_id, "organization:read")
-    if error or not has_permission:
-        current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Insufficient permissions to view organizations"))
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Insufficient permissions to view organizations"
-        )
-    
-    # Additionally check if user belongs to this organization
-    has_role, error = await user_role_service.user_has_role(current_user_id, "platform_admin")
-    if not has_role:
-        has_role, error = await user_role_service.user_has_role(current_user_id, "org_admin", org_id)
-        if not has_role:
-            has_permission, error = await user_role_service.user_has_permission(current_user_id, "organization:read", org_id)
-            if error or not has_permission:
-                current_span.set_status(trace.Status(trace.StatusCode.ERROR, "You don't have access to this organization"))
+    if not user_profile.has_role("platform_admin"):
+        if not user_profile.has_role("org_admin", str(org_id)):
+            if not user_profile.has_permission("organization:read", str(org_id)):
+                current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Insufficient permissions to view organizations"))
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You don't have access to this organization"
+                    detail="Insufficient permissions to view organizations"
                 )
     
     organization, error = await organization_service.get_organization_by_id(org_id)
@@ -145,21 +136,13 @@ async def get_organization(org_id: UUID, current_user_id: UUID = Depends(get_cur
 
 @organization_router.get("/", response_model=list[Organization])
 @tracer.start_as_current_span("organization.routes.get_all_organizations")
-async def get_all_organizations(current_user_id: UUID = Depends(get_current_user_id)):
+async def get_all_organizations(user_data: tuple[UUID, UserProfile] = Depends(get_authenticated_user)):
     """Get all organizations the user has access to."""
+    current_user_id, user_profile = user_data
     current_span = trace.get_current_span()
     current_span.set_attribute("user.id", str(current_user_id))
-    
-    # Check if user has platform_admin role
-    has_platform_admin_role, error = await user_role_service.user_has_role(current_user_id, "platform_admin")
-    if error:
-        current_span.set_status(trace.Status(trace.StatusCode.ERROR, error))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=error
-        )
-    
-    if has_platform_admin_role:
+
+    if user_profile.has_role("platform_admin"):
         # Platform admin can see all organizations
         organizations, error = await organization_service.get_all_organizations()
         if error:
@@ -187,17 +170,16 @@ async def get_all_organizations(current_user_id: UUID = Depends(get_current_user
 
 @organization_router.put("/{org_id}", response_model=Organization)
 @tracer.start_as_current_span("organization.routes.update_organization")
-async def update_organization(org_id: UUID, org_data: OrganizationUpdate, current_user_id: UUID = Depends(get_current_user_id)):
+async def update_organization(org_id: UUID, org_data: OrganizationUpdate, user_data: tuple[UUID, UserProfile] = Depends(get_authenticated_user)):
     """Update an organization (requires platform_admin or org_admin role)."""
+    current_user_id, user_profile = user_data
     current_span = trace.get_current_span()
     current_span.set_attribute("user.id", str(current_user_id))
     current_span.set_attribute("organization.id", str(org_id))
-    
+
     # Check if user has platform_admin or org_admin role for this organization
-    has_role, error = await user_role_service.user_has_role(current_user_id, "platform_admin")
-    if not has_role:
-        has_role, error = await user_role_service.user_has_role(current_user_id, "org_admin", org_id)
-        if error or not has_role:
+    if not user_profile.has_role("platform_admin"):
+        if not user_profile.has_role("org_admin", str(org_id)):
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Only platform administrators or organization administrators can update organizations"))
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -225,15 +207,15 @@ async def update_organization(org_id: UUID, org_data: OrganizationUpdate, curren
 
 @organization_router.delete("/{org_id}", status_code=status.HTTP_204_NO_CONTENT)
 @tracer.start_as_current_span("organization.routes.delete_organization")
-async def delete_organization(org_id: UUID, current_user_id: UUID = Depends(get_current_user_id)):
+async def delete_organization(org_id: UUID, user_data: tuple[UUID, UserProfile] = Depends(get_authenticated_user)):
     """Delete an organization (requires platform_admin role)."""
+    current_user_id, user_profile = user_data
     current_span = trace.get_current_span()
     current_span.set_attribute("user.id", str(current_user_id))
     current_span.set_attribute("organization.id", str(org_id))
-    
+
     # Check if user has platform_admin role
-    has_role, error = await user_role_service.user_has_role(current_user_id, "platform_admin")
-    if error or not has_role:
+    if not user_profile.has_role("platform_admin"):
         current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Only platform administrators can delete organizations"))
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

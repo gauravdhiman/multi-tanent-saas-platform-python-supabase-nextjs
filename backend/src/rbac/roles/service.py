@@ -7,7 +7,8 @@ from typing import Optional
 from uuid import UUID
 from opentelemetry import trace, metrics
 from config import supabase_config
-from src.rbac.roles.models import Role, RoleCreate, RoleUpdate
+from src.rbac.roles.models import Role, RoleCreate, RoleUpdate, RoleWithPermissions
+from src.rbac.permissions.service import permission_service
 
 logger = logging.getLogger(__name__)
 
@@ -256,6 +257,49 @@ class RoleService:
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             role_errors_counter.add(1, {"operation": "delete_role", "error": "exception"})
             return False, str(e)
+
+    @tracer.start_as_current_span("role.get_role_with_permissions")
+    async def get_role_with_permissions(self, role_id: UUID) -> tuple[Optional[RoleWithPermissions], Optional[str]]:
+        """Get a role with its associated permissions."""
+        role_operations_counter.add(1, {"operation": "get_role_with_permissions"})
+
+        # Set attribute on current span
+        current_span = trace.get_current_span()
+        current_span.set_attribute("role.id", str(role_id))
+        try:
+            # Get the role
+            role, error = await self.get_role_by_id(role_id)
+            if error or not role:
+                current_span.set_status(trace.Status(trace.StatusCode.ERROR, error or "Role not found"))
+                role_errors_counter.add(1, {"operation": "get_role_with_permissions", "error": "role_not_found"})
+                return None, error or "Role not found"
+
+            # Get permissions for the role
+            permissions, error = await permission_service.get_permissions_for_role(role_id)
+            if error:
+                logger.error(f"Error getting permissions for role {role_id}: {error}")
+                current_span.set_status(trace.Status(trace.StatusCode.ERROR, error))
+                role_errors_counter.add(1, {"operation": "get_role_with_permissions", "error": "get_permissions_failed"})
+                return None, error
+
+            role_with_permissions = RoleWithPermissions(
+                id=role.id,
+                name=role.name,
+                description=role.description,
+                is_system_role=role.is_system_role,
+                created_at=role.created_at,
+                updated_at=role.updated_at,
+                permissions=permissions
+            )
+
+            current_span.set_status(trace.Status(trace.StatusCode.OK))
+            return role_with_permissions, None
+
+        except Exception as e:
+            logger.error(f"Exception while getting role with permissions {role_id}: {e}", exc_info=True)
+            current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
+            role_errors_counter.add(1, {"operation": "get_role_with_permissions", "error": "exception"})
+            return None, str(e)
 
 
 # Global role service instance

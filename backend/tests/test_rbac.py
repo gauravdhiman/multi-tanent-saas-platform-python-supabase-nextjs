@@ -70,13 +70,13 @@ class TestRBAC:
         assert user_role.role_id == role.id
     
     @pytest.mark.asyncio
-    async def test_get_roles_for_user(self):
+    async def test_get_user_roles(self):
         """Test getting roles for a user."""
         # Create a test user
         user_id = uuid4()
         
         # Get roles for the user (should be empty initially)
-        roles, error = await rbac_service.get_roles_for_user(user_id)
+        roles, error = await rbac_service.get_user_roles(user_id)
         assert error is None
         assert roles == []
     

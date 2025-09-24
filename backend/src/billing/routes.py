@@ -50,18 +50,10 @@ async def create_subscription_plan(
 ):
     """Create a new subscription plan. (Platform Admin only)"""
     try:
-        user_id, _ = user_auth
-        
+        user_id, user_profile = user_auth
+
         # Check if user has platform admin role
-        has_platform_admin, error = await user_role_service.user_has_role(user_id, "platform_admin")
-        if error:
-            logger.error(f"Error checking platform admin role for user {user_id}: {error}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Permission check failed"
-            )
-        
-        if not has_platform_admin:
+        if not user_profile.has_role("platform_admin"):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="User does not have permission to create subscription plans"
@@ -98,18 +90,10 @@ async def update_subscription_plan(
 ):
     """Update a subscription plan. (Platform Admin only)"""
     try:
-        user_id, _ = user_auth
-        
+        user_id, user_profile = user_auth
+
         # Check if user has platform admin role
-        has_platform_admin, error = await user_role_service.user_has_role(user_id, "platform_admin")
-        if error:
-            logger.error(f"Error checking platform admin role for user {user_id}: {error}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Permission check failed"
-            )
-        
-        if not has_platform_admin:
+        if not user_profile.has_role("platform_admin"):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Platform admin access required to update subscription plans"
@@ -220,27 +204,14 @@ async def create_customer_portal(
         organization_id = request.get("organization_id")
         if not organization_id:
             raise HTTPException(status_code=400, detail="organization_id is required")
-        
+
         # Check organization access permissions
         org_id = UUID(organization_id)
-        has_platform_admin, error = await user_role_service.user_has_role(user_id, "platform_admin")
-        if error:
-            raise HTTPException(status_code=500, detail="Permission check failed")
-        
-        if not has_platform_admin:
-            has_billing_permission, error = await user_role_service.user_has_permission(
-                user_id, "billing:subscribe", org_id
-            )
-            if error:
-                raise HTTPException(status_code=500, detail="Permission check failed")
-            
-            if not has_billing_permission:
-                has_org_admin, error = await user_role_service.user_has_role(
-                    user_id, "org_admin", org_id
-                )
-                if error or not has_org_admin:
+        if not user_profile.has_role("platform_admin"):
+            if not user_profile.has_permission("billing:subscribe", str(org_id)):
+                if not user_profile.has_role("org_admin", str(org_id)):
                     raise HTTPException(
-                        status_code=403, 
+                        status_code=403,
                         detail="Insufficient permissions for billing operations in this organization"
                     )
         # Extract parameters from request body  
@@ -319,45 +290,13 @@ async def consume_credits(
         # Check billing permissions for the organization in the request
         try:
             # Check if user has platform admin role (bypasses organization checks)
-            has_platform_admin, error = await user_role_service.user_has_role(user_id, "platform_admin")
-            if error:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Authorization check failed"
-                )
-
-            if not has_platform_admin:
-                # Check if user has billing permissions for this organization
-                has_billing_permission, error = await user_role_service.user_has_permission(
-                    user_id, "billing:subscribe", consumption_request.organization_id
-                )
-
-                if error:
-                    raise HTTPException(
-                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail="Permission check failed"
-                    )
-
-                if not has_billing_permission:
-                    # Also check if user is org_admin for this organization
-                    has_org_admin, error = await user_role_service.user_has_role(
-                        user_id, "org_admin", consumption_request.organization_id
-                    )
-
-                    if error:
-                        raise HTTPException(
-                            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail="Role check failed"
-                        )
-
-                    if not has_org_admin:
+            if not user_profile.has_role("platform_admin"):
+                if not user_profile.has_permission("billing:subscribe", str(consumption_request.organization_id)):
+                    if not user_profile.has_role("org_admin", str(consumption_request.organization_id)):
                         raise HTTPException(
                             status_code=status.HTTP_403_FORBIDDEN,
                             detail="Insufficient permissions for billing operations in this organization"
                         )
-
-        except HTTPException:
-            raise
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -523,24 +462,11 @@ async def create_subscription_checkout(
         
         # Check billing permissions for this organization
         org_id = UUID(organization_id)
-        has_platform_admin, error = await user_role_service.user_has_role(user_id, "platform_admin")
-        if error:
-            raise HTTPException(status_code=500, detail="Permission check failed")
-        
-        if not has_platform_admin:
-            has_billing_permission, error = await user_role_service.user_has_permission(
-                user_id, "billing:subscribe", org_id
-            )
-            if error:
-                raise HTTPException(status_code=500, detail="Permission check failed")
-            
-            if not has_billing_permission:
-                has_org_admin, error = await user_role_service.user_has_role(
-                    user_id, "org_admin", org_id
-                )
-                if error or not has_org_admin:
+        if not user_profile.has_role("platform_admin"):
+            if not user_profile.has_permission("billing:subscribe", str(org_id)):
+                if not user_profile.has_role("org_admin", str(org_id)):
                     raise HTTPException(
-                        status_code=403, 
+                        status_code=403,
                         detail="Insufficient permissions for billing operations in this organization"
                     )
         plan_id = request.get("plan_id")
@@ -620,24 +546,11 @@ async def create_credits_checkout(
         
         # Check billing permissions for this organization
         org_id = UUID(organization_id)
-        has_platform_admin, error = await user_role_service.user_has_role(user_id, "platform_admin")
-        if error:
-            raise HTTPException(status_code=500, detail="Permission check failed")
-        
-        if not has_platform_admin:
-            has_billing_permission, error = await user_role_service.user_has_permission(
-                user_id, "billing:subscribe", org_id
-            )
-            if error:
-                raise HTTPException(status_code=500, detail="Permission check failed")
-            
-            if not has_billing_permission:
-                has_org_admin, error = await user_role_service.user_has_role(
-                    user_id, "org_admin", org_id
-                )
-                if error or not has_org_admin:
+        if not user_profile.has_role("platform_admin"):
+            if not user_profile.has_permission("billing:subscribe", str(org_id)):
+                if not user_profile.has_role("org_admin", str(org_id)):
                     raise HTTPException(
-                        status_code=403, 
+                        status_code=403,
                         detail="Insufficient permissions for billing operations in this organization"
                     )
         
@@ -702,24 +615,11 @@ async def create_customer_portal_session(
         
         # Check billing permissions for this organization
         org_id = UUID(organization_id)
-        has_platform_admin, error = await user_role_service.user_has_role(user_id, "platform_admin")
-        if error:
-            raise HTTPException(status_code=500, detail="Permission check failed")
-        
-        if not has_platform_admin:
-            has_billing_permission, error = await user_role_service.user_has_permission(
-                user_id, "billing:subscribe", org_id
-            )
-            if error:
-                raise HTTPException(status_code=500, detail="Permission check failed")
-            
-            if not has_billing_permission:
-                has_org_admin, error = await user_role_service.user_has_role(
-                    user_id, "org_admin", org_id
-                )
-                if error or not has_org_admin:
+        if not user_profile.has_role("platform_admin"):
+            if not user_profile.has_permission("billing:subscribe", str(org_id)):
+                if not user_profile.has_role("org_admin", str(org_id)):
                     raise HTTPException(
-                        status_code=403, 
+                        status_code=403,
                         detail="Insufficient permissions for billing operations in this organization"
                     )
         
@@ -758,26 +658,12 @@ async def cancel_subscription(
         
         # Check billing permissions for this organization
         org_id = UUID(organization_id)
-        has_platform_admin, error = await user_role_service.user_has_role(user_id, "platform_admin")
-        if error:
-            raise HTTPException(status_code=500, detail="Permission check failed")
-        
-        if not has_platform_admin:
-            has_billing_permission, error = await user_role_service.user_has_permission(
-                user_id, "billing:subscribe", org_id
-            )
-            if error:
-                raise HTTPException(status_code=500, detail="Permission check failed")
-            
-            if not has_billing_permission:
-                has_org_admin, error = await user_role_service.user_has_role(
-                    user_id, "org_admin", org_id
+        if not user_profile.has_role("platform_admin"):
+            if not user_profile.has_role("org_admin", str(org_id)):
+                raise HTTPException(
+                    status_code=403,
+                    detail="Insufficient permissions for billing operations in this organization"
                 )
-                if error or not has_org_admin:
-                    raise HTTPException(
-                        status_code=403, 
-                        detail="Insufficient permissions for billing operations in this organization"
-                    )
         
         # Get organization subscription
         subscription = await billing_service.get_organization_subscription(UUID(organization_id))
@@ -817,26 +703,12 @@ async def reactivate_subscription(
         
         # Check billing permissions for this organization
         org_id = UUID(organization_id)
-        has_platform_admin, error = await user_role_service.user_has_role(user_id, "platform_admin")
-        if error:
-            raise HTTPException(status_code=500, detail="Permission check failed")
-        
-        if not has_platform_admin:
-            has_billing_permission, error = await user_role_service.user_has_permission(
-                user_id, "billing:subscribe", org_id
-            )
-            if error:
-                raise HTTPException(status_code=500, detail="Permission check failed")
-            
-            if not has_billing_permission:
-                has_org_admin, error = await user_role_service.user_has_role(
-                    user_id, "org_admin", org_id
+        if not user_profile.has_role("platform_admin"):
+            if not user_profile.has_role("org_admin", str(org_id)):
+                raise HTTPException(
+                    status_code=403,
+                    detail="Insufficient permissions for billing operations in this organization"
                 )
-                if error or not has_org_admin:
-                    raise HTTPException(
-                        status_code=403, 
-                        detail="Insufficient permissions for billing operations in this organization"
-                    )
         
         # Get organization subscription
         subscription = await billing_service.get_organization_subscription(UUID(organization_id))

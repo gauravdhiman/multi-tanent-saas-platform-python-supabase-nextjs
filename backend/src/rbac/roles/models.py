@@ -39,3 +39,9 @@ class Role(RoleBase):
 class RoleWithPermissions(Role):
     """Model for a role with its associated permissions."""
     permissions: list[Permission] = Field(default=[], description="list of permissions assigned to this role")
+
+class UserRoleWithPermissions(BaseModel):
+    """User role with organization context."""
+    role: RoleWithPermissions = Field(..., description="Role with permissions")
+    organization_id: Optional[UUID] = Field(None, description="Organization ID (None for platform-wide roles)")
+    user_role_id: UUID = Field(..., description="User role assignment ID")

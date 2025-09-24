@@ -8,7 +8,7 @@ from uuid import UUID
 from opentelemetry import trace, metrics
 from config import supabase_config
 from src.rbac.user_roles.models import UserRole, UserRoleCreate, UserRoleUpdate, UserWithRoles
-from src.rbac.roles.models import Role, RoleWithPermissions
+from src.rbac.roles.models import Role, RoleWithPermissions, UserRoleWithPermissions
 from src.rbac.permissions.models import Permission
 
 logger = logging.getLogger(__name__)
@@ -196,10 +196,10 @@ class UserRoleService:
             user_role_errors_counter.add(1, {"operation": "get_user_role_by_id", "error": "exception"})
             return None, str(e)
     
-    @tracer.start_as_current_span("user_role.get_roles_for_user")
-    async def get_roles_for_user(self, user_id: UUID, organization_id: Optional[UUID] = None) -> tuple[list[Role], Optional[str]]:
+    @tracer.start_as_current_span("user_role.get_user_roles")
+    async def get_user_roles(self, user_id: UUID, organization_id: Optional[UUID] = None) -> tuple[list[Role], Optional[str]]:
         """Get all roles for a user, optionally filtered by organization."""
-        user_role_operations_counter.add(1, {"operation": "get_roles_for_user"})
+        user_role_operations_counter.add(1, {"operation": "get_user_roles"})
         
         # Set attribute on current span
         current_span = trace.get_current_span()
@@ -234,29 +234,29 @@ class UserRoleService:
         except Exception as e:
             logger.error(f"Exception while getting roles for user {user_id}: {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
-            user_role_errors_counter.add(1, {"operation": "get_roles_for_user", "error": "exception"})
+            user_role_errors_counter.add(1, {"operation": "get_user_roles", "error": "exception"})
             return [], str(e)
     
     @tracer.start_as_current_span("user_role.get_user_roles_with_permissions")
     async def get_user_roles_with_permissions(self, user_id: UUID, organization_id: Optional[UUID] = None) -> tuple[list[RoleWithPermissions], Optional[str]]:
         """Get all roles with their permissions for a user."""
         user_role_operations_counter.add(1, {"operation": "get_user_roles_with_permissions"})
-        
+
         # Set attribute on current span
         current_span = trace.get_current_span()
         current_span.set_attribute("user.id", str(user_id))
         if organization_id:
             current_span.set_attribute("organization.id", str(organization_id))
-        
+
         try:
             # Get user roles
-            roles, error = await self.get_roles_for_user(user_id, organization_id)
+            roles, error = await self.get_user_roles(user_id, organization_id)
             if error:
                 logger.error(f"Error getting roles for user {user_id}: {error}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, error))
                 user_role_errors_counter.add(1, {"operation": "get_user_roles_with_permissions", "error": "get_roles_failed"})
                 return [], error
-            
+
             # Get permissions for each role
             roles_with_permissions = []
             for role in roles:
@@ -268,7 +268,7 @@ class UserRoleService:
                     current_span.set_status(trace.Status(trace.StatusCode.ERROR, error))
                     user_role_errors_counter.add(1, {"operation": "get_user_roles_with_permissions", "error": "get_permissions_failed"})
                     return [], error
-                
+
                 roles_with_permissions.append(RoleWithPermissions(
                     id=role.id,
                     name=role.name,
@@ -278,15 +278,64 @@ class UserRoleService:
                     updated_at=role.updated_at,
                     permissions=permissions
                 ))
-            
+
             current_span.set_attribute("roles_with_permissions.count", len(roles_with_permissions))
             current_span.set_status(trace.Status(trace.StatusCode.OK))
             return roles_with_permissions, None
-            
+
         except Exception as e:
             logger.error(f"Exception while getting roles with permissions for user {user_id}: {e}", exc_info=True)
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             user_role_errors_counter.add(1, {"operation": "get_user_roles_with_permissions", "error": "exception"})
+            return [], str(e)
+
+    @tracer.start_as_current_span("user_role.get_all_user_roles_with_permissions")
+    async def get_all_user_roles_with_permissions(self, user_id: UUID) -> tuple[list[UserRoleWithPermissions], Optional[str]]:
+        """Get all roles with their permissions and organization context for a user."""
+        user_role_operations_counter.add(1, {"operation": "get_all_user_roles_with_permissions"})
+
+        # Set attribute on current span
+        current_span = trace.get_current_span()
+        current_span.set_attribute("user.id", str(user_id))
+
+        try:
+            # Get user roles first
+            user_roles_response = self.supabase.table("user_roles").select("id, role_id, organization_id").eq("user_id", str(user_id)).execute()
+
+            if not user_roles_response.data:
+                current_span.set_status(trace.Status(trace.StatusCode.OK))
+                return [], None
+
+            # Get unique role IDs
+            role_ids = list(set(ur["role_id"] for ur in user_roles_response.data))
+
+            # Get roles with permissions for these role IDs
+            roles_with_permissions = []
+            for role_id in role_ids:
+                # Import here to avoid circular imports
+                from src.rbac.roles.service import role_service
+                role_with_perms, error = await role_service.get_role_with_permissions(role_id)
+                if error:
+                    logger.error(f"Error getting role with permissions for role {role_id}: {error}")
+                    continue
+
+                # Find all user roles for this role_id
+                for ur in user_roles_response.data:
+                    if ur["role_id"] == role_id:
+                        roles_with_permissions.append(UserRoleWithPermissions(
+                            user_role_id=ur["id"],
+                            organization_id=ur.get("organization_id"),
+                            role=role_with_perms
+                        ))
+
+            current_span.set_attribute("roles_with_permissions.count", len(roles_with_permissions))
+            current_span.set_status(trace.Status(trace.StatusCode.OK))
+            return roles_with_permissions, None
+
+        except Exception as e:
+            logger.error(f"Exception while getting all roles with permissions for user {user_id}: {e}", exc_info=True)
+            current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
+            user_role_errors_counter.add(1, {"operation": "get_all_user_roles_with_permissions", "error": "exception"})
             return [], str(e)
 
     @tracer.start_as_current_span("user_role.user_has_permission")
@@ -314,7 +363,7 @@ class UserRoleService:
             permission_id = permission_dict["id"]
             
             # Get user roles
-            roles, error = await self.get_roles_for_user(user_id, organization_id)
+            roles, error = await self.get_user_roles(user_id, organization_id)
             if error:
                 logger.error(f"Error getting roles for user {user_id}: {error}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, error))

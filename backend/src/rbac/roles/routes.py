@@ -8,7 +8,8 @@ from opentelemetry import trace
 
 from src.rbac.roles.models import Role, RoleCreate, RoleUpdate
 from src.rbac.roles.service import role_service
-from src.auth.middleware import get_current_user_id
+from src.auth.middleware import get_authenticated_user
+from src.auth.models import UserProfile
 from src.rbac.user_roles.service import user_role_service
 
 # Get tracer for this module
@@ -20,15 +21,15 @@ role_router = APIRouter(prefix="/roles", tags=["Roles"])
 
 @role_router.post("/", response_model=Role, status_code=status.HTTP_201_CREATED)
 @tracer.start_as_current_span("rbac.roles.create_role")
-async def create_role(role_data: RoleCreate, current_user_id: UUID = Depends(get_current_user_id)):
+async def create_role(role_data: RoleCreate, user_auth: tuple[UUID, UserProfile] = Depends(get_authenticated_user)):
     """Create a new role (requires platform_admin role)."""
+    current_user_id, user_profile = user_auth
     current_span = trace.get_current_span()
     current_span.set_attribute("user.id", str(current_user_id))
     current_span.set_attribute("role.name", role_data.name)
-    
+
     # Check if user has platform_admin role
-    has_role, error = await user_role_service.user_has_role(current_user_id, "platform_admin")
-    if error or not has_role:
+    if not user_profile.has_role("platform_admin"):
         current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Only platform administrators can create roles"))
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -50,15 +51,15 @@ async def create_role(role_data: RoleCreate, current_user_id: UUID = Depends(get
 
 @role_router.get("/{role_id}", response_model=Role)
 @tracer.start_as_current_span("rbac.roles.get_role")
-async def get_role(role_id: UUID, current_user_id: UUID = Depends(get_current_user_id)):
+async def get_role(role_id: UUID, user_auth: tuple[UUID, UserProfile] = Depends(get_authenticated_user)):
     """Get a role by ID (requires role:read permission)."""
+    current_user_id, user_profile = user_auth
     current_span = trace.get_current_span()
     current_span.set_attribute("user.id", str(current_user_id))
     current_span.set_attribute("role.id", str(role_id))
-    
+
     # Check if user has permission to read roles
-    has_permission, error = await user_role_service.user_has_permission(current_user_id, "role:read")
-    if error or not has_permission:
+    if not user_profile.has_permission("role:read"):
         current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Insufficient permissions to view roles"))
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -79,14 +80,14 @@ async def get_role(role_id: UUID, current_user_id: UUID = Depends(get_current_us
 
 @role_router.get("/", response_model=list[Role])
 @tracer.start_as_current_span("rbac.roles.get_all_roles")
-async def get_all_roles(current_user_id: UUID = Depends(get_current_user_id)):
+async def get_all_roles(user_auth: tuple[UUID, UserProfile] = Depends(get_authenticated_user)):
     """Get all roles (requires role:read permission)."""
+    current_user_id, user_profile = user_auth
     current_span = trace.get_current_span()
     current_span.set_attribute("user.id", str(current_user_id))
-    
+
     # Check if user has permission to read roles
-    has_permission, error = await user_role_service.user_has_permission(current_user_id, "role:read")
-    if error or not has_permission:
+    if not user_profile.has_permission("role:read"):
         current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Insufficient permissions to view roles"))
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -108,15 +109,15 @@ async def get_all_roles(current_user_id: UUID = Depends(get_current_user_id)):
 
 @role_router.put("/{role_id}", response_model=Role)
 @tracer.start_as_current_span("rbac.roles.update_role")
-async def update_role(role_id: UUID, role_data: RoleUpdate, current_user_id: UUID = Depends(get_current_user_id)):
+async def update_role(role_id: UUID, role_data: RoleUpdate, user_auth: tuple[UUID, UserProfile] = Depends(get_authenticated_user)):
     """Update a role (requires platform_admin role)."""
+    current_user_id, user_profile = user_auth
     current_span = trace.get_current_span()
     current_span.set_attribute("user.id", str(current_user_id))
     current_span.set_attribute("role.id", str(role_id))
-    
+
     # Check if user has platform_admin role
-    has_role, error = await user_role_service.user_has_role(current_user_id, "platform_admin")
-    if error or not has_role:
+    if not user_profile.has_role("platform_admin"):
         current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Only platform administrators can update roles"))
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -144,15 +145,15 @@ async def update_role(role_id: UUID, role_data: RoleUpdate, current_user_id: UUI
 
 @role_router.delete("/{role_id}", status_code=status.HTTP_204_NO_CONTENT)
 @tracer.start_as_current_span("rbac.roles.delete_role")
-async def delete_role(role_id: UUID, current_user_id: UUID = Depends(get_current_user_id)):
+async def delete_role(role_id: UUID, user_auth: tuple[UUID, UserProfile] = Depends(get_authenticated_user)):
     """Delete a role (requires platform_admin role)."""
+    current_user_id, user_profile = user_auth
     current_span = trace.get_current_span()
     current_span.set_attribute("user.id", str(current_user_id))
     current_span.set_attribute("role.id", str(role_id))
-    
+
     # Check if user has platform_admin role
-    has_role, error = await user_role_service.user_has_role(current_user_id, "platform_admin")
-    if error or not has_role:
+    if not user_profile.has_role("platform_admin"):
         current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Only platform administrators can delete roles"))
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

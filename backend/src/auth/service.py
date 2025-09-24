@@ -4,6 +4,7 @@ Authentication service for handling user registration, login, and session manage
 
 from typing import Optional
 from fastapi import HTTPException, status
+from uuid import UUID
 import logging
 from opentelemetry import trace, metrics
 
@@ -361,27 +362,27 @@ class AuthService:
     @tracer.start_as_current_span("auth.get_user")
     async def get_user(self, access_token: str) -> tuple[Optional[UserProfile], Optional[HTTPException]]:
         """
-        Get current user profile.
-        
+        Get current user profile with roles and permissions.
+
         Args:
             access_token: User's access token
-            
+
         Returns:
             tuple of (UserProfile or None, HTTPException or None)
         """
         # Record metrics
         auth_attempts_counter.add(1, {"operation": "get_user", "source": "backend"})
-        
+
         # Set attribute on current span
         current_span = trace.get_current_span()
         current_span.set_attribute("token.provided", bool(access_token))
         logging.info("Attempting to get user profile")
-        
+
         try:
             # Validate token directly without setting session to avoid refresh_token requirement
             # We'll decode the JWT and validate with Supabase API directly
             user_response = self.supabase.auth.get_user(access_token)
-            
+
             if not user_response or not user_response.user:
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Invalid token"))
                 logging.warning("Failed to get user - invalid token or no user response")
@@ -390,9 +391,9 @@ class AuthService:
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid or expired token"
                 )
-            
+
             user = user_response.user
-            
+
             if not user:
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Invalid token"))
                 logging.warning("Failed to get user - invalid token")
@@ -401,12 +402,19 @@ class AuthService:
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid or expired token"
                 )
-            
+
             # Log the successful user retrieval
             logging.info(f"Retrieved user profile: {user.id}")
             current_span.set_attribute("user.id", str(user.id))
             auth_success_counter.add(1, {"operation": "get_user"})
-            
+
+            # Get user roles with permissions and organization context
+            roles_with_permissions, roles_error = await user_role_service.get_all_user_roles_with_permissions(UUID(user.id))
+            if roles_error:
+                logging.warning(f"Failed to get roles for user {user.id}: {roles_error}")
+                # Continue without roles - don't fail the entire request
+                roles_with_permissions = []
+
             # Get user profile from metadata
             user_metadata = user.user_metadata or {}
             profile = UserProfile(
@@ -416,12 +424,13 @@ class AuthService:
                 last_name=user_metadata.get("last_name", ""),
                 email_confirmed_at=user.email_confirmed_at.isoformat() if user.email_confirmed_at else None,
                 created_at=user.created_at.isoformat() if user.created_at else "",
-                updated_at=user.updated_at.isoformat() if user.updated_at else ""
+                updated_at=user.updated_at.isoformat() if user.updated_at else "",
+                roles=roles_with_permissions
             )
-            
+
             current_span.set_status(trace.Status(trace.StatusCode.OK))
             return profile, None
-            
+
         except Exception as e:
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             logging.error(f"Get user error: {e}")

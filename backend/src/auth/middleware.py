@@ -37,47 +37,22 @@ async def check_billing_permissions(
 
     try:
         # Check if user has platform admin role (bypasses organization checks)
-        has_platform_admin, error = await user_role_service.user_has_role(user_id, "platform_admin")
-        if error:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Authorization check failed"
-            )
-
-        if has_platform_admin:
+        if user_profile.has_role("platform_admin"):
             # Platform admins have access to everything
             return user_id, user_profile
 
+        # Also check if user is org_admin for this organization
+        if user_profile.has_role("org_admin", str(organization_id)):
+            return user_id, user_profile
+
         # Check if user has billing permissions for this organization
-        has_billing_permission, error = await user_role_service.user_has_permission(
-            user_id, "billing:subscribe", organization_id
+        if user_profile.has_permission("billing:subscribe", str(organization_id)):
+            return user_id, user_profile
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions for billing operations in this organization"
         )
-
-        if error:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Permission check failed"
-            )
-
-        if not has_billing_permission:
-            # Also check if user is org_admin for this organization
-            has_org_admin, error = await user_role_service.user_has_role(
-                user_id, "org_admin", organization_id
-            )
-
-            if error:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Role check failed"
-                )
-
-            if not has_org_admin:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Insufficient permissions for billing operations in this organization"
-                )
-
-        return user_id, user_profile
 
     except HTTPException:
         raise
@@ -272,43 +247,25 @@ async def check_organization_access(
 
     try:
         # Check if user has platform admin role (bypasses organization checks)
-        has_platform_admin, error = await user_role_service.user_has_role(user_id, "platform_admin")
-        if error:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Authorization check failed"
-            )
-
-        if has_platform_admin:
+        if user_profile.has_role("platform_admin"):
             # Platform admins have access to everything
             return user_id, user_profile
 
         # Check if user is org_admin for this organization
-        has_org_admin, error = await user_role_service.user_has_role(
-            user_id, "org_admin", organization_id
+        if user_profile.has_role("org_admin", str(organization_id)):
+            return user_id, user_profile
+
+        # Check if user has any role in this organization
+        has_org_access = any(
+            str(user_role.organization_id) == str(organization_id)
+            for user_role in user_profile.roles
         )
 
-        if error:
+        if not has_org_access:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Role check failed"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: You do not have access to this organization"
             )
-
-        if not has_org_admin:
-            # Check if user has any role in this organization
-            user_orgs, error = await user_role_service.get_user_organizations(user_id)
-            if error:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Organization membership check failed"
-                )
-            
-            org_ids = [org.id for org in user_orgs] if user_orgs else []
-            if organization_id not in org_ids:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Access denied: You do not have access to this organization"
-                )
 
         return user_id, user_profile
 
