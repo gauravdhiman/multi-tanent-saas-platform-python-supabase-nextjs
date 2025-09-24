@@ -2,62 +2,54 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
+import { useOrganization } from '@/contexts/organization-context';
 import { useRouter } from 'next/navigation';
-import { organizationService } from '@/services/organization-service';
 import { Loader2 } from 'lucide-react';
 import type { OrganizationCheckProps } from '@/types/auth';
 
 export function OrganizationCheck({ children }: OrganizationCheckProps) {
   const { user, loading: authLoading } = useAuth();
+  const { organizations, loading: orgLoading, error: orgError, refreshOrganizations } = useOrganization();
   const router = useRouter();
   const [checking, setChecking] = useState(true);
-  const [hasOrganization, setHasOrganization] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
+  const [hasRefreshed, setHasRefreshed] = useState(false);
 
   useEffect(() => {
     const checkOrganization = async () => {
-      if (authLoading || !user) {
+      if (authLoading || orgLoading || !user) {
         return;
       }
 
-      // Add a small delay to ensure auth is fully settled
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // If there's an error loading organizations, allow access but log the issue
+      if (orgError) {
+        console.warn('Error loading organizations in OrganizationCheck, allowing access:', orgError);
+        setChecking(false);
+        return;
+      }
 
-      try {
-        const organizations = await organizationService.getUserOrganizations();
-        
-        if (organizations.length === 0) {
-          // User has no organizations, redirect to organization creation
+      if (organizations.length === 0) {
+        if (!hasRefreshed) {
+          // Try to refresh organizations in case they were just created
+          setHasRefreshed(true);
+          try {
+            await refreshOrganizations();
+          } catch (err) {
+            console.error('Error refreshing organizations:', err);
+          }
+          // After refresh, the useEffect will run again with updated organizations
+          return;
+        } else {
+          // Already refreshed and still no organizations, redirect to creation
           router.replace('/auth/create-organization');
           return;
         }
-        
-        setHasOrganization(true);
-      } catch (error) {
-        console.error('Error checking user organizations:', error);
-        
-        // Check if it's an auth-related error and we haven't retried too many times
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        if ((errorMessage.includes('session') || errorMessage.includes('token') || errorMessage.includes('auth')) && retryCount < 2) {
-          console.log(`Auth-related error in OrganizationCheck, retrying... (attempt ${retryCount + 1})`);
-          setRetryCount(prev => prev + 1);
-          // Wait a bit longer and retry
-          setTimeout(() => {
-            checkOrganization();
-          }, 1000);
-          return;
-        }
-        
-        // On persistent error, still allow access but log the issue
-        console.warn('Persistent error checking organizations, allowing access');
-        setHasOrganization(true);
-      } finally {
-        setChecking(false);
       }
+
+      setChecking(false);
     };
 
     checkOrganization();
-  }, [user, authLoading, router, retryCount]);
+  }, [user, authLoading, orgLoading, organizations, orgError, router, refreshOrganizations, hasRefreshed]);
 
   // Show loading state while checking
   if (authLoading || checking) {
@@ -72,7 +64,7 @@ export function OrganizationCheck({ children }: OrganizationCheckProps) {
   }
 
   // If user doesn't have an organization, don't render children (they'll be redirected)
-  if (!hasOrganization) {
+  if (!checking && organizations.length === 0) {
     return null;
   }
 

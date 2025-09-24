@@ -46,6 +46,13 @@ export interface RoleWithPermissions extends Role {
   permissions: Permission[];
 }
 
+// User role assignment with organization context (matches backend UserRoleWithPermissions)
+export interface UserRoleAssignment {
+  role: RoleWithPermissions;
+  organization_id: string | null;
+  user_role_id: string;
+}
+
 // User with roles and permissions
 export interface UserWithRoles {
   id: string;

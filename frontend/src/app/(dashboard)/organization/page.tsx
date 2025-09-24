@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { organizationService } from '@/services/organization-service';
-import { rbacService } from '@/services/rbac-service';
+import { useOrganization } from '@/contexts/organization-context';
 import { OrganizationEditDialog } from '@/components/organizations/organization-edit-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,13 +18,12 @@ import {
   Activity
 } from 'lucide-react';
 import Link from 'next/link';
-import type { Organization } from '@/types/organization';
 import type { UserRoleWithPermissions } from '@/types/user';
 
 export default function OrganizationPage() {
   const { user } = useAuth();
-  
-  const [organization, setOrganization] = useState<Organization | null>(null);
+  const { currentOrganization, loading: orgLoading, error: orgError } = useOrganization();
+
   const [userRoles, setUserRoles] = useState<UserRoleWithPermissions[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,31 +37,19 @@ export default function OrganizationPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const loadOrganizationData = useCallback (async () => {
-    if (!user) return;
+    if (!user || !currentOrganization) return;
 
     try {
       setLoading(true);
       setError(null);
 
-      // Get user's organizations
-      const organizations = await organizationService.getUserOrganizations();
-      if (!organizations || organizations.length === 0) {
-        setError('No organization found');
-        return;
-      }
-
-      const org = organizations[0]; // Get the primary organization
-      setOrganization(org);
-
-      // Load user's roles in this organization if they have access
-      if (user) {
-        try {
-          const roles = await rbacService.getUserRolesWithPermissions(user.id, org.id);
-          setUserRoles(roles);
-        } catch (err) {
-          console.error('Error loading user roles:', err);
-          // Non-critical error, continue
-        }
+      // Set user's roles from the auth context (already loaded)
+      if (user?.roles) {
+        // Filter roles for this organization
+        const orgRoles = user.roles
+          .filter(userRole => !userRole.organization_id || userRole.organization_id === currentOrganization.id)
+          .map(userRole => userRole.role);
+        setUserRoles(orgRoles);
       }
     } catch (err: unknown) {
       const error = err as Error;
@@ -72,55 +58,29 @@ export default function OrganizationPage() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, currentOrganization]);
 
   useEffect(() => {
-    loadOrganizationData();
-  }, [loadOrganizationData, user]);
+    if (!orgLoading && currentOrganization) {
+      loadOrganizationData();
+    } else if (!orgLoading && !currentOrganization) {
+      setLoading(false);
+      setError(orgError || 'No organization found');
+    }
+  }, [loadOrganizationData, currentOrganization, orgLoading, orgError]);
 
   useEffect(() => {
-    const checkUserPermissions = async () => {
-      if (!user || !organization) return;
+    const checkUserPermissions = () => {
+      if (!user || !currentOrganization) return;
 
       try {
-        // For now, provide reasonable defaults until backend allows self-permission checking
-        // TODO: Update when backend allows users to check their own permissions
-        console.log('Checking user permissions for organization access...');
-        
-        let isPlatformAdmin = false;
-        let isOrgAdmin = false;
-        let canUpdate = false;
-        let canViewMembers = false;
+        // Check permissions using the user profile from auth context
+        const isPlatformAdmin = user.hasRole('platform_admin');
+        const isOrgAdmin = user.hasRole('org_admin', currentOrganization.id);
 
-        try {
-          // Try to check if user is platform admin
-          isPlatformAdmin = await rbacService.userHasRole(user.id, 'platform_admin');
-        } catch (err) {
-          console.warn('Cannot check platform admin role (insufficient permissions):', err);
-          // For demo purposes, assume user has basic permissions
-          isPlatformAdmin = false;
-        }
-
-        try {
-          // Try to check if user is org admin for this organization
-          isOrgAdmin = await rbacService.userHasRole(user.id, 'org_admin', organization.id);
-        } catch (err) {
-          console.warn('Cannot check org admin role (insufficient permissions):', err);
-          // For demo purposes, assume user has basic permissions
-          isOrgAdmin = false;
-        }
-
-        // If we can't check roles due to permissions, provide reasonable defaults
-        // In a real app, these permissions would be determined by the auth token or user context
-        if (!isPlatformAdmin && !isOrgAdmin) {
-          // Grant basic permissions for organization members
-          canUpdate = true; // Allow users to update their own organization
-          canViewMembers = true; // Allow users to view organization members
-        } else {
-          // Admin users get full permissions
-          canUpdate = true;
-          canViewMembers = true;
-        }
+        // Grant permissions based on roles
+        const canUpdate = isPlatformAdmin || isOrgAdmin || false; // Allow basic update for organization members
+        const canViewMembers = isPlatformAdmin || isOrgAdmin || false; // Allow basic member viewing for organization members
 
         setUserPermissions({
           canUpdate,
@@ -138,8 +98,10 @@ export default function OrganizationPage() {
           isOrgAdmin: false
         });
       }
-    };    checkUserPermissions();
-  }, [user, organization]);
+    };
+
+    checkUserPermissions();
+  }, [user, currentOrganization]);
 
   const handleEdit = () => {
     setEditDialogOpen(true);
@@ -160,7 +122,7 @@ export default function OrganizationPage() {
     );
   }
 
-  if (error || !organization) {
+  if (error || !currentOrganization) {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center h-64">
@@ -180,7 +142,7 @@ export default function OrganizationPage() {
               <Building2 className="h-8 w-8 text-primary" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-foreground">{organization.name}</h1>
+              <h1 className="text-3xl font-bold text-foreground">{currentOrganization.name}</h1>
               <p className="text-muted-foreground">Organization Details</p>
             </div>
           </div>
@@ -194,12 +156,12 @@ export default function OrganizationPage() {
         </div>
 
         <div className="flex items-center space-x-4">
-          <Badge variant={organization.is_active ? "default" : "secondary"}>
-            {organization.is_active ? 'Active' : 'Inactive'}
+          <Badge variant={currentOrganization.is_active ? "default" : "secondary"}>
+            {currentOrganization.is_active ? 'Active' : 'Inactive'}
           </Badge>
           <span className="text-muted-foreground flex items-center">
             <Calendar className="h-4 w-4 mr-1" />
-            Created {new Date(organization.created_at).toLocaleDateString()}
+            Created {new Date(currentOrganization.created_at).toLocaleDateString()}
           </span>
         </div>
       </div>
@@ -254,22 +216,22 @@ export default function OrganizationPage() {
               <CardContent className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Name</label>
-                  <p className="text-foreground">{organization.name}</p>
+                  <p className="text-foreground">{currentOrganization.name}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Description</label>
-                  <p className="text-foreground">{organization.description || 'No description'}</p>
+                  <p className="text-foreground">{currentOrganization.description || 'No description'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Website</label>
-                  {organization.website ? (
-                    <a 
-                      href={organization.website} 
-                      target="_blank" 
+                  {currentOrganization.website ? (
+                    <a
+                      href={currentOrganization.website}
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary hover:text-primary/80 underline"
                     >
-                      {organization.website}
+                      {currentOrganization.website}
                     </a>
                   ) : (
                     <p className="text-muted-foreground">No website</p>
@@ -277,13 +239,13 @@ export default function OrganizationPage() {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Slug</label>
-                  <p className="text-foreground font-mono">{organization.slug}</p>
+                  <p className="text-foreground font-mono">{currentOrganization.slug}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Status</label>
                   <div className="flex items-center space-x-2">
-                    <Badge variant={organization.is_active ? "default" : "secondary"}>
-                      {organization.is_active ? 'Active' : 'Inactive'}
+                    <Badge variant={currentOrganization.is_active ? "default" : "secondary"}>
+                      {currentOrganization.is_active ? 'Active' : 'Inactive'}
                     </Badge>
                   </div>
                 </div>
@@ -328,11 +290,11 @@ export default function OrganizationPage() {
       </div>
 
       {/* Edit Dialog */}
-      {organization && (
+      {currentOrganization && (
         <OrganizationEditDialog
           open={editDialogOpen}
           onOpenChange={setEditDialogOpen}
-          organization={organization}
+          organization={currentOrganization}
           onSuccess={handleEditSuccess}
         />
       )}

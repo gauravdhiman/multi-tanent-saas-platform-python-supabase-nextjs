@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
-import { organizationService } from '@/services/organization-service';
+import { useOrganization } from '@/contexts/organization-context';
 import { 
   LayoutDashboard, 
   Building2, 
@@ -61,29 +61,10 @@ const navigationItems = [
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { user, signOut } = useAuth();
+  const { currentOrganization } = useOrganization();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [organization, setOrganization] = useState<Organization | null>(null);
-  const [, setLoading] = useState(true);
-
-  const loadUserOrganization = useCallback(async () => {
-    if (!user) return;
-    try {
-      const organizations = await organizationService.getUserOrganizations();
-      if (organizations && organizations.length > 0) {
-        setOrganization(organizations[0]); // Get the user's primary organization
-      }
-    } catch (error) {
-      console.error('Error loading user organization:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => { 
-    loadUserOrganization();
-  }, [loadUserOrganization]);
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -95,11 +76,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const handleNavigation = (href: string) => {
-    if (href === '/organization' && organization) {
-      router.push('/organization');
-    } else {
-      router.push(href);
-    }
+    router.push(href);
   };
 
   const getInitials = (name: string) => {

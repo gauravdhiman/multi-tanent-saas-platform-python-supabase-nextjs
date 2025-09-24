@@ -4,6 +4,7 @@ Pydantic models for authentication requests and responses.
 
 from typing import Optional
 from pydantic import BaseModel, EmailStr, Field, field_validator
+from uuid import UUID
 import re
 from src.rbac.roles.models import UserRoleWithPermissions
 
@@ -68,7 +69,7 @@ class AuthResponse(BaseModel):
 class UserProfile(BaseModel):
     """User profile information."""
 
-    id: str = Field(..., description="User ID")
+    id: UUID = Field(..., description="User ID")
     email: str = Field(..., description="User email")
     first_name: str = Field(..., description="User first name")
     last_name: str = Field(..., description="User last name")

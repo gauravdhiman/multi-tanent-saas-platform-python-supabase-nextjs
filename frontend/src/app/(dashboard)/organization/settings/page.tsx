@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
+import { useOrganization } from '@/contexts/organization-context';
 import { organizationService } from '@/services/organization-service';
 import { rbacService } from '@/services/rbac-service';
 import { OrganizationEditDialog } from '@/components/organizations/organization-edit-dialog';
@@ -26,9 +27,7 @@ import type { Organization } from '@/types/organization';
 
 export default function OrganizationSettingsPage() {
   const { user } = useAuth();
-  const [organization, setOrganization] = useState<Organization | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { currentOrganization, loading: orgLoading, error: orgError } = useOrganization();
   const [userPermissions, setUserPermissions] = useState({
     canUpdate: false,
     canDelete: false,
@@ -41,56 +40,13 @@ export default function OrganizationSettingsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const loadOrganizationData = useCallback( async () => {
-    if (!user) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Get user's primary organization
-      const organizations = await organizationService.getUserOrganizations();
-      if (!organizations || organizations.length === 0) {
-        setError('No organization found');
-        return;
-      }
-
-      const org = organizations[0];
-      setOrganization(org);
-    } catch (err: unknown) {
-      const error = err as Error;
-      console.error('Error loading organization:', err);
-      setError(error.message || 'Failed to load organization');
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
   useEffect(() => {
-    loadOrganizationData();
-  }, [user, loadOrganizationData]);
-
-  const checkUserPermissions = useCallback(async () => {
-    if (!user || !organization) return;
+    if (!user || !currentOrganization) return;
 
     try {
-      // Provide reasonable defaults until backend allows self-permission checking
-      let isPlatformAdmin = false;
-      let isOrgAdmin = false;
-
-      try {
-        isPlatformAdmin = await rbacService.userHasRole(user.id, 'platform_admin');
-      } catch (err) {
-        console.warn('Cannot check platform admin role:', err);
-        isPlatformAdmin = false;
-      }
-
-      try {
-        isOrgAdmin = await rbacService.userHasRole(user.id, 'org_admin', organization.id);
-      } catch (err) {
-        console.warn('Cannot check org admin role:', err);
-        isOrgAdmin = false;
-      }
+      // Check permissions using the user profile from auth context
+      const isPlatformAdmin = user.hasRole('platform_admin');
+      const isOrgAdmin = user.hasRole('org_admin', currentOrganization.id);
 
       // Grant basic organization management permissions
       const canUpdate = isPlatformAdmin || isOrgAdmin || true; // Allow basic org updates
@@ -115,11 +71,7 @@ export default function OrganizationSettingsPage() {
         isOrgAdmin: false
       });
     }
-  }, [user, organization]);
-
-  useEffect(() => {
-    checkUserPermissions();
-  }, [user, organization, checkUserPermissions]);
+  }, [user, currentOrganization]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -130,10 +82,10 @@ export default function OrganizationSettingsPage() {
 
   const handleEditSuccess = () => {
     setEditDialogOpen(false);
-    loadOrganizationData();
+    // Organization context will automatically update
   };
 
-  if (loading) {
+  if (orgLoading) {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center h-64">
@@ -143,11 +95,11 @@ export default function OrganizationSettingsPage() {
     );
   }
 
-  if (error || !organization) {
+  if (orgError || !currentOrganization) {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center h-64">
-          <div className="text-red-500">{error || 'Organization not found'}</div>
+          <div className="text-red-500">{orgError || 'Organization not found'}</div>
         </div>
       </div>
     );
@@ -199,17 +151,17 @@ export default function OrganizationSettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="orgName">Organization Name</Label>
-                  <Input 
-                    id="orgName" 
-                    defaultValue={organization.name} 
+                  <Input
+                    id="orgName"
+                    defaultValue={currentOrganization.name}
                     placeholder="Enter organization name"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="orgSlug">Slug</Label>
-                  <Input 
-                    id="orgSlug" 
-                    defaultValue={organization.slug} 
+                  <Input
+                    id="orgSlug"
+                    defaultValue={currentOrganization.slug}
                     placeholder="organization-slug"
                   />
                   <p className="text-xs text-muted-foreground">Used in URLs and API calls</p>
@@ -221,7 +173,7 @@ export default function OrganizationSettingsPage() {
                 <Input 
                   id="orgWebsite" 
                   type="url"
-                  defaultValue={organization.website || ''}
+                  defaultValue={currentOrganization.website || ''}
                   placeholder="https://www.example.com"
                 />
                 <p className="text-xs text-muted-foreground">Your organization&apos;s official website URL</p>
@@ -231,7 +183,7 @@ export default function OrganizationSettingsPage() {
                 <Label htmlFor="orgDescription">Description</Label>
                 <Textarea 
                   id="orgDescription" 
-                  defaultValue={organization.description || ''}
+                  defaultValue={currentOrganization.description || ''}
                   placeholder={`Tell us about your organization! Consider including:
 
 • When your organization was founded
@@ -258,7 +210,7 @@ Example: "Founded in 2020, we're a 25-person software company based in San Franc
                   <input 
                     type="checkbox" 
                     id="isActive" 
-                    defaultChecked={organization.is_active}
+                    defaultChecked={currentOrganization.is_active}
                     className="rounded"
                   />
                   <label htmlFor="isActive" className="text-sm">Organization is active</label>
@@ -476,21 +428,21 @@ Example: "Founded in 2020, we're a 25-person software company based in San Franc
       </Tabs>
 
       {/* Edit Dialog */}
-      {organization && (
+      {currentOrganization && (
         <OrganizationEditDialog
           open={editDialogOpen}
           onOpenChange={setEditDialogOpen}
-          organization={organization}
+          organization={currentOrganization}
           onSuccess={handleEditSuccess}
         />
       )}
 
       {/* Delete Dialog */}
-      {organization && (
+      {currentOrganization && (
         <OrganizationDeleteDialog
           open={deleteDialogOpen}
           onOpenChange={setDeleteDialogOpen}
-          organization={organization}
+          organization={currentOrganization}
           onSuccess={() => {
             setDeleteDialogOpen(false);
             // Redirect or handle successful deletion

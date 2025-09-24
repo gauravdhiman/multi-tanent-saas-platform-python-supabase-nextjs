@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/auth-context';
+import { useOrganization } from '@/contexts/organization-context';
 import { organizationService } from '@/services/organization-service';
 import { rbacService } from '@/services/rbac-service';
 import { isDummyOrganization } from '@/lib/organization-utils';
@@ -20,9 +21,7 @@ import type { Organization } from '@/types/organization';
 
 export default function OrganizationsPage() {
   const { user } = useAuth();
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { organizations, loading: orgLoading, error: orgError } = useOrganization();
   const [userPermissions, setUserPermissions] = useState({
     canCreate: false,
     canUpdate: false,
@@ -37,62 +36,41 @@ export default function OrganizationsPage() {
   const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null);
 
   useEffect(() => {
-    const checkUserPermissions = async () => {
-      if (!user) return;
+    if (!user) return;
 
-      try {
-        // Check if user is platform admin
-        const isPlatformAdmin = await rbacService.userHasRole(user.id, 'platform_admin');
-        
-        // Check specific permissions
-        const canCreate = isPlatformAdmin || await rbacService.userHasPermission(user.id, 'organization:create');
-        const canUpdate = isPlatformAdmin || await rbacService.userHasPermission(user.id, 'organization:update');
-        const canDelete = isPlatformAdmin || await rbacService.userHasPermission(user.id, 'organization:delete');
+    try {
+      // Check permissions using the user profile from auth context
+      const isPlatformAdmin = user.hasRole('platform_admin');
+      const canCreate = isPlatformAdmin || user.hasPermission('organization:create');
+      const canUpdate = isPlatformAdmin || user.hasPermission('organization:update');
+      const canDelete = isPlatformAdmin || user.hasPermission('organization:delete');
 
-        setUserPermissions({
-          canCreate,
-          canUpdate,
-          canDelete,
-          isPlatformAdmin
-        });
-      } catch (error) {
-        console.error('Error checking permissions:', error);
-      }
-    };
-    
-    loadOrganizations();
-    checkUserPermissions();
+      setUserPermissions({
+        canCreate,
+        canUpdate,
+        canDelete,
+        isPlatformAdmin
+      });
+    } catch (error) {
+      console.error('Error checking permissions:', error);
+    }
   }, [user]);
 
-  const loadOrganizations = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const orgs = await organizationService.getUserOrganizations();
-      setOrganizations(orgs);
-    } catch (err) {
-      console.error('Error loading organizations:', err);
-      setError('Failed to load organizations');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { refreshOrganizations } = useOrganization();
 
   const handleCreateSuccess = (newOrg: Organization) => {
-    setOrganizations(prev => [...prev, newOrg]);
+    refreshOrganizations();
     setCreateDialogOpen(false);
   };
 
   const handleEditSuccess = (updatedOrg: Organization) => {
-    setOrganizations(prev => 
-      prev.map(item => item.id === updatedOrg.id ? updatedOrg : item)
-    );
+    refreshOrganizations();
     setEditDialogOpen(false);
     setSelectedOrganization(null);
   };
 
   const handleDeleteSuccess = (deletedOrgId: string) => {
-    setOrganizations(prev => prev.filter(item => item.id !== deletedOrgId));
+    refreshOrganizations();
     setDeleteDialogOpen(false);
     setSelectedOrganization(null);
   };
@@ -118,7 +96,7 @@ export default function OrganizationsPage() {
     return userPermissions.isPlatformAdmin && userPermissions.canDelete;
   };
 
-  if (loading) {
+  if (orgLoading) {
     return (
       <div className="container mx-auto py-8">
         <div className="flex items-center justify-center h-64">
@@ -131,12 +109,12 @@ export default function OrganizationsPage() {
     );
   }
 
-  if (error) {
+  if (orgError) {
     return (
       <div className="container mx-auto py-8">
         <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
-          <Button onClick={loadOrganizations}>Try Again</Button>
+          <p className="text-red-600 mb-4">{orgError}</p>
+          <Button onClick={refreshOrganizations}>Try Again</Button>
         </div>
       </div>
     );

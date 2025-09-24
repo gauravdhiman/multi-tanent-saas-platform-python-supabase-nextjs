@@ -5,18 +5,29 @@
  * Provides authentication state and methods throughout the application.
  */
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User, Session, Provider } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/api/client';
 import type { AuthUser, SignUpData, SignInData, AuthContextType, AuthProviderProps } from '@/types/auth';
+import type { UserRoleAssignment } from '@/types/rbac';
+import type { ApiResponse } from '@/types/api';
+
+interface UserProfileResponse {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  roles: UserRoleAssignment[];
+}
 import { getMeter } from '@/lib/opentelemetry';
-import { 
-  withTelemetrySignUp, 
-  withTelemetrySignIn, 
-  withTelemetrySignInWithOAuth, 
+import {
+  withTelemetrySignUp,
+  withTelemetrySignIn,
+  withTelemetrySignInWithOAuth,
   withTelemetrySignOut,
-  logInfo, 
-  recordMetric 
+  logInfo,
+  recordMetric
 } from '@/lib/opentelemetry-helpers';
 
 // Get meter for authentication operations
@@ -41,12 +52,40 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileCache, setProfileCache] = useState<Map<string, UserRoleAssignment[]>>(new Map());
 
+    // Fetch user profile from backend API with caching
+  const fetchUserProfile = useCallback(async (userId: string): Promise<UserRoleAssignment[] | undefined> => {
+    // Check cache first
+    if (profileCache.has(userId)) {
+      return profileCache.get(userId);
+    }
+
+    try {
+      const response: ApiResponse<UserProfileResponse> = await apiClient.get(`/auth/me`);
+      const userData = response.data;
+      if (userData && userData.roles) {
+        // Cache the result
+        setProfileCache(prev => new Map(prev).set(userId, userData.roles));
+        return userData.roles;
+      }
+    } catch (error) {
+      console.warn('Failed to fetch user profile from backend:', error);
+    }
+    return undefined;
+  }, [profileCache]);
+  
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
-      setUser(session ? transformSupabaseUser(session.user) : null);
+      if (session?.user) {
+        // Fetch user profile with roles from backend
+        const roles = await fetchUserProfile(session.user.id);
+        setUser(transformSupabaseUser(session.user, roles));
+      } else {
+        setUser(null);
+      }
       setLoading(false);
       logInfo('Auth session initialized', {
         hasSession: !!session,
@@ -57,11 +96,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
-      setUser(session ? transformSupabaseUser(session.user) : null);
+      if (session?.user) {
+        // Fetch user profile with roles from backend
+        const roles = await fetchUserProfile(session.user.id);
+        setUser(transformSupabaseUser(session.user, roles));
+      } else {
+        setUser(null);
+      }
       setLoading(false);
-      
+
       // Log auth state changes with OpenTelemetry logger
       logInfo('Auth state changed', {
         event: _event,
@@ -71,12 +116,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [fetchUserProfile]);
 
   // Transform Supabase user to our AuthUser type
-  const transformSupabaseUser = (user: User): AuthUser => {
+  const transformSupabaseUser = (user: User, roles?: UserRoleAssignment[]): AuthUser => {
     const metadata = user.user_metadata || {};
-    return {
+
+    const authUser: AuthUser = {
       id: user.id,
       email: user.email || '',
       firstName: metadata.first_name || metadata.full_name?.split(' ')[0] || '',
@@ -84,7 +130,50 @@ export function AuthProvider({ children }: AuthProviderProps) {
       emailConfirmedAt: user.email_confirmed_at || undefined,
       createdAt: user.created_at || '',
       updatedAt: user.updated_at || '',
+      roles,
+      hasRole: (roleName: string, organizationId?: string) => {
+        if (!roles) return false;
+        for (const userRole of roles) {
+          if (userRole.role.name === roleName) {
+            // If organization_id is specified, check if role is for that organization
+            if (organizationId) {
+              if (userRole.organization_id === organizationId) {
+                return true;
+              }
+            } else {
+              // For platform-wide roles (organization_id is null)
+              if (roleName === "platform_admin" && userRole.organization_id === null) {
+                return true;
+              }
+            }
+          }
+        }
+        return false;
+      },
+      hasPermission: (permissionName: string, organizationId?: string) => {
+        if (!roles) return false;
+        for (const userRole of roles) {
+          for (const permission of userRole.role.permissions) {
+            if (permission.name === permissionName) {
+              // If organization_id is specified, check if role is for that organization
+              if (organizationId) {
+                if (userRole.organization_id === organizationId) {
+                  return true;
+                }
+              } else {
+                // For platform-wide permissions
+                if (userRole.role.name === "platform_admin" && userRole.organization_id === null) {
+                  return true;
+                }
+              }
+            }
+          }
+        }
+        return false;
+      },
     };
+
+    return authUser;
   };
 
   // Sign up with email and password
@@ -185,6 +274,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
     { operation: 'Signout', attributes: { operation: 'signout' } }
   );
 
+  // Refresh user profile from backend
+  const refreshUserProfile = async () => {
+    if (!session?.user?.id) return;
+
+    try {
+      // Clear cache for this user to force refresh
+      setProfileCache(prev => {
+        const newCache = new Map(prev);
+        newCache.delete(session.user.id);
+        return newCache;
+      });
+      const roles = await fetchUserProfile(session.user.id);
+      const updatedUser = transformSupabaseUser(session.user, roles);
+      setUser(updatedUser);
+    } catch (error) {
+      console.warn('Failed to refresh user profile:', error);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     session,
@@ -194,6 +302,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     signInWithOAuth,
     signOut,
     isAuthenticated: !!user,
+    refreshUserProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

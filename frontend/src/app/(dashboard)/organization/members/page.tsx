@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { organizationService } from '@/services/organization-service';
-import { rbacService } from '@/services/rbac-service';
+import { useOrganization } from '@/contexts/organization-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,15 +13,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { Organization } from '@/types/organization';
 import type { Member } from '@/types/user';
 
 export default function OrganizationMembersPage() {
   const { user } = useAuth();
-  const [organization, setOrganization] = useState<Organization | null>(null);
+  const { currentOrganization, loading: orgLoading, error: orgError } = useOrganization();
   const [members, setMembers] = useState<Member[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [userPermissions, setUserPermissions] = useState({
     canManageMembers: false,
     canViewMembers: false,
@@ -30,23 +26,10 @@ export default function OrganizationMembersPage() {
     isOrgAdmin: false
   });
 
-  const loadData = useCallback(async () => {
-    if (!user) return;
+  useEffect(() => {
+    if (!user || orgLoading) return;
 
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Get user's primary organization
-      const organizations = await organizationService.getUserOrganizations();
-      if (!organizations || organizations.length === 0) {
-        setError('No organization found');
-        return;
-      }
-
-      const org = organizations[0];
-      setOrganization(org);
-
+    if (currentOrganization) {
       // Load members (mock data for now)
       setMembers([
         {
@@ -59,40 +42,16 @@ export default function OrganizationMembersPage() {
           roles: [{ id: '1', name: 'org_admin', description: 'Organization Administrator' }]
         }
       ]);
-    } catch (err: unknown) {
-      const error = err as Error;
-      console.error('Error loading data:', err);
-      setError(error.message || 'Failed to load data');
-    } finally {
-      setLoading(false);
     }
-  }, [user]);
+  }, [user, currentOrganization, orgLoading]);
 
   useEffect(() => {
-    loadData();
-  }, [user, loadData]);
-
-  const checkUserPermissions = useCallback(async () => {
-    if (!user || !organization) return;
+    if (!user || !currentOrganization) return;
 
     try {
-      // Provide reasonable defaults until backend allows self-permission checking
-      let isPlatformAdmin = false;
-      let isOrgAdmin = false;
-
-      try {
-        isPlatformAdmin = await rbacService.userHasRole(user.id, 'platform_admin');
-      } catch (err) {
-        console.warn('Cannot check platform admin role:', err);
-        isPlatformAdmin = false;
-      }
-
-      try {
-        isOrgAdmin = await rbacService.userHasRole(user.id, 'org_admin', organization.id);
-      } catch (err) {
-        console.warn('Cannot check org admin role:', err);
-        isOrgAdmin = false;
-      }
+      // Check permissions using the user profile from auth context
+      const isPlatformAdmin = user.hasRole('platform_admin');
+      const isOrgAdmin = user.hasRole('org_admin', currentOrganization.id);
 
       // Grant basic member management permissions
       const canManageMembers = isPlatformAdmin || isOrgAdmin || true; // Allow basic member management
@@ -114,13 +73,9 @@ export default function OrganizationMembersPage() {
         isOrgAdmin: false
       });
     }
-  }, [user, organization]);
+  }, [user, currentOrganization]);
 
-  useEffect(() => {
-    checkUserPermissions();
-  }, [user, organization, checkUserPermissions]);
-
-  if (loading) {
+  if (orgLoading) {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center h-64">
@@ -130,11 +85,11 @@ export default function OrganizationMembersPage() {
     );
   }
 
-  if (error || !organization) {
+  if (orgError || !currentOrganization) {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center h-64">
-          <div className="text-red-500">{error || 'Organization not found'}</div>
+          <div className="text-red-500">{orgError || 'Organization not found'}</div>
         </div>
       </div>
     );
@@ -160,7 +115,7 @@ export default function OrganizationMembersPage() {
               <Users className="h-8 w-8 text-blue-600" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-foreground">{organization?.name || 'Organization'} Members</h1>
+              <h1 className="text-3xl font-bold text-foreground">{currentOrganization?.name || 'Organization'} Members</h1>
               <p className="text-muted-foreground">Manage organization members and their roles</p>
             </div>
           </div>

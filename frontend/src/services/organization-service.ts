@@ -187,7 +187,7 @@ class OrganizationService {
     
     return await tracer.startActiveSpan('organization.getUserOrganizations', async (span) => {
       try {
-        const response = await this.fetchWithAuth('/organizations');
+        const response = await this.fetchWithAuth('/organizations/');
         const result = await response.json();
         span.setAttribute('organizations.count', result.length);
         span.setStatus({ code: SpanStatusCode.OK });
@@ -200,37 +200,6 @@ class OrganizationService {
         span.end();
       }
     });
-  }
-
-  // Check if any organization is a dummy organization
-  async hasDummyOrganization(): Promise<{ isDummy: boolean; organization?: Organization }> {
-    try {
-      const organizations = await this.getUserOrganizations();
-      
-      if (organizations.length === 0) {
-        return { isDummy: false };
-      }
-      
-      // Check the first organization (assuming user has one primary org)
-      const org = organizations[0];
-      
-      // Detect dummy organizations by common patterns:
-      // 1. Name contains "default" or "dummy"
-      // 2. Slug contains "-org" pattern (auto-generated)
-      // 3. Description mentions "default organization"
-      const isDummyResult = 
-        org.name.toLowerCase().includes('default') ||
-        org.name.toLowerCase().includes('dummy') ||
-        org.slug.includes('-org') ||
-        (org.description && org.description.toLowerCase().includes('default organization'));
-      
-      const isDummy: boolean = Boolean(isDummyResult);
-      
-      return { isDummy, organization: isDummy ? org : undefined };
-    } catch (error) {
-      console.error('Error checking for dummy organization:', error);
-      return { isDummy: false };
-    }
   }
 
   // Create organization (platform admin only)

@@ -2,12 +2,14 @@
 Authentication API routes.
 """
 
-from fastapi import APIRouter, status, Header
+from fastapi import APIRouter, status, Header, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from opentelemetry import trace
+from uuid import UUID
 
 from src.auth.models import SignUpRequest, SignInRequest, AuthResponse, ErrorResponse, UserProfile
 from src.auth.service import auth_service
+from src.auth.middleware import get_authenticated_user
 
 # Get tracer for this module
 tracer = trace.get_tracer(__name__)
@@ -22,7 +24,7 @@ auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
     500: {"model": ErrorResponse, "description": "Internal server error"}
 })
 @tracer.start_as_current_span("auth.routes.sign_up")
-async def sign_up(request: SignUpRequest) -> JSONResponse:
+async def sign_up(request: SignUpRequest) -> AuthResponse:
     """
     Register a new user account.
     
@@ -45,19 +47,16 @@ async def sign_up(request: SignUpRequest) -> JSONResponse:
         elif error.error == "internal_error":
             status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
             current_span.set_attribute("error.type", "internal_error")
-        
+
         current_span.set_status(trace.Status(trace.StatusCode.ERROR, error.message))
-        return JSONResponse(
+        raise HTTPException(
             status_code=status_code,
-            content=error.model_dump()
+            detail=error.message
         )
-    
+
     current_span.set_attribute("user.id", str(auth_response.user.id))
     current_span.set_status(trace.Status(trace.StatusCode.OK))
-    return JSONResponse(
-        status_code=status.HTTP_201_CREATED,
-        content=auth_response.model_dump()
-    )
+    return auth_response
 
 
 @auth_router.post("/signin", response_model=AuthResponse, responses={
@@ -65,7 +64,7 @@ async def sign_up(request: SignUpRequest) -> JSONResponse:
     500: {"model": ErrorResponse, "description": "Internal server error"}
 })
 @tracer.start_as_current_span("auth.routes.sign_in")
-async def sign_in(request: SignInRequest) -> JSONResponse:
+async def sign_in(request: SignInRequest) -> AuthResponse:
     """
     Authenticate user with email and password.
     
@@ -84,19 +83,16 @@ async def sign_in(request: SignInRequest) -> JSONResponse:
             current_span.set_attribute("error.type", "internal_error")
         else:
             current_span.set_attribute("error.type", "invalid_credentials")
-        
+
         current_span.set_status(trace.Status(trace.StatusCode.ERROR, error.message))
-        return JSONResponse(
+        raise HTTPException(
             status_code=status_code,
-            content=error.model_dump()
+            detail=error.message
         )
-    
+
     current_span.set_attribute("user.id", str(auth_response.user.id))
     current_span.set_status(trace.Status(trace.StatusCode.OK))
-    return JSONResponse(
-        status_code=status.HTTP_200_OK,
-        content=auth_response.model_dump()
-    )
+    return auth_response
 
 
 @auth_router.post("/signout", responses={
@@ -142,7 +138,7 @@ async def sign_out(authorization: str = Header(None)) -> JSONResponse:
     500: {"model": ErrorResponse, "description": "Internal server error"}
 })
 @tracer.start_as_current_span("auth.routes.refresh_token")
-async def refresh_token(request: dict[str, str]) -> JSONResponse:
+async def refresh_token(request: dict[str, str]) -> AuthResponse:
     """
     Refresh access token using refresh token.
     
@@ -168,19 +164,16 @@ async def refresh_token(request: dict[str, str]) -> JSONResponse:
             current_span.set_attribute("error.type", "internal_error")
         else:
             current_span.set_attribute("error.type", "invalid_token")
-        
+
         current_span.set_status(trace.Status(trace.StatusCode.ERROR, error.message))
-        return JSONResponse(
+        raise HTTPException(
             status_code=status_code,
-            content=error.model_dump()
+            detail=error.message
         )
-    
+
     current_span.set_attribute("user.id", str(auth_response.user.id))
     current_span.set_status(trace.Status(trace.StatusCode.OK))
-    return JSONResponse(
-        status_code=status.HTTP_200_OK,
-        content=auth_response.model_dump()
-    )
+    return auth_response
 
 
 @auth_router.get("/me", response_model=UserProfile, responses={
@@ -188,41 +181,16 @@ async def refresh_token(request: dict[str, str]) -> JSONResponse:
     500: {"model": ErrorResponse, "description": "Internal server error"}
 })
 @tracer.start_as_current_span("auth.routes.get_current_user")
-async def get_current_user(authorization: str = Header(None)) -> JSONResponse:
+async def get_current_user(user_auth: tuple[UUID, UserProfile] = Depends(get_authenticated_user)) -> UserProfile:
     """
     Get current user profile.
-    
+
     Requires Authorization header with Bearer token.
     """
     current_span = trace.get_current_span()
-    if not authorization or not authorization.startswith("Bearer "):
-        current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Missing or invalid authorization header"))
-        return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content={"error": "unauthorized", "message": "Missing or invalid authorization header"}
-        )
-    
-    access_token = authorization.replace("Bearer ", "")
-    current_span.set_attribute("token.provided", True)
-    
-    user_profile, error = await auth_service.get_user(access_token)
-    
-    if error:
-        status_code = error.status_code
-        if error.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
-            current_span.set_attribute("error.type", "internal_error")
-        else:
-            current_span.set_attribute("error.type", "invalid_token")
-        
-        current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(error.detail)))
-        return JSONResponse(
-            status_code=status_code,
-            content={"error": "authentication_failed", "message": str(error.detail)}
-        )
-    
-    current_span.set_attribute("user.id", str(user_profile.id))
+    user_id, user_profile = user_auth
+
+    current_span.set_attribute("user.id", str(user_id))
     current_span.set_status(trace.Status(trace.StatusCode.OK))
-    return JSONResponse(
-        status_code=status.HTTP_200_OK,
-        content=user_profile.model_dump()
-    )
+
+    return user_profile

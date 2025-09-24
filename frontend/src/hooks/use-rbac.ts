@@ -5,7 +5,7 @@ import { rbacService } from '@/services/rbac-service';
 import type { Role, Permission, UserRole, RBACState, RBACActions } from '@/types/rbac';
 
 export const useRBAC = (): [RBACState, RBACActions] => {
-  const { user } = useAuth();
+  const { user, refreshUserProfile } = useAuth();
   const [state, setState] = useState<RBACState>({
     roles: [],
     permissions: [],
@@ -16,25 +16,15 @@ export const useRBAC = (): [RBACState, RBACActions] => {
 
   // Load user roles and permissions on user change
   useEffect(() => {
-    const loadUserRoles = async () => {
-      if (!user?.id) return;
-      
-      setState(prev => ({ ...prev, loading: true, error: null }));
-      
-      try {
-        const userRoles = await rbacService.getUserRolesWithPermissions(user.id);
-        setState(prev => ({ ...prev, userRoles, loading: false }));
-      } catch (error) {
-        setState(prev => ({ 
-          ...prev, 
-          loading: false, 
-          error: error instanceof Error ? error.message : 'Failed to load user roles' 
-        }));
-      }
-    };
+    if (!user?.id) {
+      setState(prev => ({ ...prev, userRoles: [], loading: false, error: null }));
+      return;
+    }
 
-    loadUserRoles();
-  }, [user?.id]);
+    // User roles are now available from auth context
+    const userRoles = (user.roles || []).map(userRole => userRole.role);
+    setState(prev => ({ ...prev, userRoles, loading: false, error: null }));
+  }, [user?.id, user?.roles]);
 
   // Load all roles and permissions (for admin users)
   const loadRolesAndPermissions = async () => {
@@ -164,16 +154,13 @@ export const useRBAC = (): [RBACState, RBACActions] => {
   const assignRoleToUser = async (userRoleData: Omit<UserRole, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const newUserRole = await rbacService.assignRoleToUser(userRoleData);
-      // Refresh user roles to get the updated list
-      if (user?.id) {
-        const updatedUserRoles = await rbacService.getUserRolesWithPermissions(user.id);
-        setState(prev => ({ ...prev, userRoles: updatedUserRoles }));
-      }
+      // Refresh user profile to get the updated roles
+      await refreshUserProfile();
       return newUserRole;
     } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to assign role to user' 
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'Failed to assign role to user'
       }));
       throw error;
     }
@@ -183,15 +170,12 @@ export const useRBAC = (): [RBACState, RBACActions] => {
   const removeRoleFromUser = async (userRoleId: string) => {
     try {
       await rbacService.removeRoleFromUser(userRoleId);
-      // Refresh user roles to get the updated list
-      if (user?.id) {
-        const updatedUserRoles = await rbacService.getUserRolesWithPermissions(user.id);
-        setState(prev => ({ ...prev, userRoles: updatedUserRoles }));
-      }
+      // Refresh user profile to get the updated roles
+      await refreshUserProfile();
     } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to remove role from user' 
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'Failed to remove role from user'
       }));
       throw error;
     }
@@ -230,17 +214,14 @@ export const useRBAC = (): [RBACState, RBACActions] => {
   // Refresh user roles
   const refreshUserRoles = async () => {
     if (!user?.id) return;
-    
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    
+
     try {
-      const userRoles = await rbacService.getUserRolesWithPermissions(user.id);
-      setState(prev => ({ ...prev, userRoles, loading: false }));
+      await refreshUserProfile();
+      // The user roles will be updated automatically via the useEffect
     } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        loading: false, 
-        error: error instanceof Error ? error.message : 'Failed to refresh user roles' 
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'Failed to refresh user roles'
       }));
     }
   };
@@ -248,17 +229,13 @@ export const useRBAC = (): [RBACState, RBACActions] => {
   // Check if user has a specific permission
   const hasPermission = (permissionName: string): boolean => {
     if (!user?.id) return false;
-    
-    return state.userRoles.some(role => 
-      role.permissions.some(permission => permission.name === permissionName)
-    );
+    return user.hasPermission(permissionName);
   };
 
   // Check if user has a specific role
   const hasRole = (roleName: string): boolean => {
     if (!user?.id) return false;
-    
-    return state.userRoles.some(role => role.name === roleName);
+    return user.hasRole(roleName);
   };
 
   const actions: RBACActions = {

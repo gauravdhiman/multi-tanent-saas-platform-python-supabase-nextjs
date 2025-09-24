@@ -3,6 +3,7 @@
  */
 
 import { Organization } from './organization';
+import { UserRoleAssignment } from './rbac';
 
 // Supabase types (to avoid importing the entire library in types)
 export interface SupabaseProvider {
@@ -25,6 +26,9 @@ export interface AuthUser {
   emailConfirmedAt?: string;
   createdAt: string;
   updatedAt: string;
+  roles?: UserRoleAssignment[];
+  hasRole: (roleName: string, organizationId?: string) => boolean;
+  hasPermission: (permissionName: string, organizationId?: string) => boolean;
 }
 
 // Auth session
@@ -72,6 +76,7 @@ export interface AuthContextType {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   signOut: () => Promise<{ error: any }>;
   isAuthenticated: boolean;
+  refreshUserProfile: () => Promise<void>;
 }
 
 // Auth provider props

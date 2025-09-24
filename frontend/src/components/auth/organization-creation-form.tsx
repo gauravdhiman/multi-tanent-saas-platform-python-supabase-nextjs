@@ -8,6 +8,7 @@ import { Loader2, Building, SkipForward } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
@@ -28,6 +29,7 @@ import type { OrganizationCreationFormProps } from '@/types/auth';
 export function OrganizationCreationForm({ onSkip, onSuccess }: OrganizationCreationFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [waitingForOrg, setWaitingForOrg] = useState(false);
   const { user } = useAuth();
   const router = useRouter();
   
@@ -45,7 +47,35 @@ export function OrganizationCreationForm({ onSkip, onSuccess }: OrganizationCrea
   });
   
   const name = watch('name');
-  
+
+  const waitForOrganization = async () => {
+    setWaitingForOrg(true);
+    const maxAttempts = 6; // 3 seconds with 500ms intervals
+    for (let i = 0; i < maxAttempts; i++) {
+      try {
+        const orgs = await organizationService.getUserOrganizations();
+        if (orgs.length > 0) {
+          // Organization found, redirect
+          if (onSuccess) {
+            onSuccess();
+          } else {
+            router.push('/dashboard');
+          }
+          return;
+        }
+      } catch (err) {
+        console.error('Error checking organizations:', err);
+      }
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    // If still no organization after waiting, redirect anyway
+    if (onSuccess) {
+      onSuccess();
+    } else {
+      router.push('/dashboard');
+    }
+  };
+
   React.useEffect(() => {
     // Auto-generate slug when name changes
     if (name) {
@@ -79,12 +109,9 @@ export function OrganizationCreationForm({ onSkip, onSuccess }: OrganizationCrea
       });
       
       console.log('Organization created:', result);
-      
-      if (onSuccess) {
-        onSuccess();
-      } else {
-        router.push('/dashboard');
-      }
+
+      // Wait for the organization to be available before redirecting
+      await waitForOrganization();
     } catch (err) {
       console.error('Organization creation error:', err);
       setError(err instanceof Error ? err.message : 'Failed to create organization. Please try again.');
@@ -111,8 +138,8 @@ export function OrganizationCreationForm({ onSkip, onSuccess }: OrganizationCrea
       const result = await organizationService.createSelfOrganization(defaultOrgData);
       
       console.log('Default organization created:', result);
-      
-      onSkip();
+      // Wait for the organization to be available before redirecting
+      await waitForOrganization();
     } catch (err) {
       console.error('Default organization creation error:', err);
       setError(err instanceof Error ? err.message : 'Failed to create default organization. Please try again.');
@@ -120,6 +147,20 @@ export function OrganizationCreationForm({ onSkip, onSuccess }: OrganizationCrea
     }
   };
   
+  if (waitingForOrg) {
+    return (
+      <div className="w-full max-w-md mx-auto">
+        <div className="text-center mb-8">
+          <div className="mx-auto bg-blue-100 rounded-full p-3 w-16 h-16 flex items-center justify-center mb-4">
+            <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Setting up your organization...</h1>
+          <p className="text-gray-600">Please wait while we finalize your setup.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-md mx-auto">
       <div className="text-center mb-8">
@@ -129,7 +170,7 @@ export function OrganizationCreationForm({ onSkip, onSuccess }: OrganizationCrea
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Create Your Organization</h1>
         <p className="text-gray-600">Set up your organization with your details, or skip to use default settings</p>
       </div>
-      
+
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {error && (
           <Alert variant="destructive">
@@ -138,12 +179,13 @@ export function OrganizationCreationForm({ onSkip, onSuccess }: OrganizationCrea
         )}
         
         <div className="space-y-2">
-          <Label htmlFor="name">Organization Name</Label>
+          <Label htmlFor="name" className="text-gray-700">Organization Name</Label>
           <Input
             id="name"
             {...register('name')}
             placeholder="Enter organization name"
             disabled={isLoading}
+            className="text-gray-900"
           />
           {errors.name && (
             <p className="text-sm text-red-600">{errors.name.message}</p>
@@ -151,14 +193,14 @@ export function OrganizationCreationForm({ onSkip, onSuccess }: OrganizationCrea
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="description">Description (Optional)</Label>
-          <textarea
+          <Label htmlFor="description" className="text-gray-700">Description (Optional)</Label>
+          <Textarea
             id="description"
             {...register('description')}
             placeholder="Describe your organization"
             rows={3}
             disabled={isLoading}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            className="text-gray-900 bg-white focus-visible:ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
           />
           {errors.description && (
             <p className="text-sm text-red-600">{errors.description.message}</p>
@@ -166,12 +208,13 @@ export function OrganizationCreationForm({ onSkip, onSuccess }: OrganizationCrea
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="slug">Organization Slug</Label>
+          <Label htmlFor="slug" className="text-gray-700">Organization Slug</Label>
           <Input
             id="slug"
             {...register('slug')}
             placeholder="unique-identifier"
             disabled={isLoading}
+            className="text-gray-900"
           />
           {errors.slug && (
             <p className="text-sm text-red-600">{errors.slug.message}</p>
@@ -198,12 +241,12 @@ export function OrganizationCreationForm({ onSkip, onSuccess }: OrganizationCrea
           </Button>
           
           {onSkip && (
-            <Button 
+            <Button
               type="button"
               variant="outline"
               onClick={handleSkip}
               disabled={isLoading}
-              className="w-full flex items-center justify-center"
+              className="w-full flex items-center justify-center text-gray-700 border-gray-300 bg-white hover:bg-gray-50 hover:text-gray-800"
             >
               <SkipForward className="mr-2 h-4 w-4" />
               Skip and Use Default Settings
@@ -213,7 +256,7 @@ export function OrganizationCreationForm({ onSkip, onSuccess }: OrganizationCrea
         
         {onSkip && (
           <div className="mt-4 p-3 bg-gray-50 rounded-md">
-            <p className="text-xs text-gray-600 text-center">
+            <p className="text-xs text-gray-700 text-center">
               If you skip, we&apos;ll create an organization with default settings. 
               You can update these details later in your organization settings.
             </p>
