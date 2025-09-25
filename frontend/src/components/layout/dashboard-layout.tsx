@@ -172,42 +172,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             );
           })}
         </nav>
-
-        {/* User Menu - Fixed at bottom */}
-        <div className="p-4 border-t border-border flex-shrink-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className={`w-full ${sidebarCollapsed ? 'px-2' : 'justify-start px-3'} h-auto py-2`}>
-                <div className="flex items-center space-x-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-blue-500 text-white">
-                      {user?.firstName ? getInitials(`${user.firstName} ${user.lastName || ''}`) : 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  {!sidebarCollapsed && (
-                    <div className="text-left">
-                      <p className="text-sm font-medium text-foreground">
-                        {user?.firstName} {user?.lastName}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{user?.email}</p>
-                    </div>
-                  )}
-                </div>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem>
-                <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut} className="text-red-600">
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Sign out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
       </div>
 
       {/* Main Content Area - Fixed height */}
@@ -249,6 +213,28 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 Welcome, {user?.firstName}
               </span>
               <ThemeToggle />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full p-0">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-blue-500 text-white">
+                        {user?.firstName ? getInitials(`${user.firstName} ${user.lastName || ''}`) : 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem>
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="text-red-600">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Sign out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </header>

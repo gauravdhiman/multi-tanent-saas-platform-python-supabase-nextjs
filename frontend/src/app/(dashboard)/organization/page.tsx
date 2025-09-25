@@ -12,11 +12,11 @@ import {
   Users, 
   Settings, 
   Calendar, 
-  Globe, 
   Edit3,
   Shield,
   Activity
 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
 import type { UserRoleWithPermissions } from '@/types/user';
 
@@ -148,10 +148,38 @@ export default function OrganizationPage() {
           </div>
 
           {userPermissions.canUpdate && (
-            <Button onClick={handleEdit} className="flex items-center space-x-2">
-              <Edit3 className="h-4 w-4" />
-              <span>Edit Organization</span>
-            </Button>
+            <div className="relative">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button className="flex items-center space-x-2">
+                    <Activity className="h-4 w-4" />
+                    <span>Actions</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem className="flex items-center space-x-2" onClick={handleEdit}>
+                    <Edit3 className="h-4 w-4" />
+                    <span>Edit Organization</span>
+                  </DropdownMenuItem>
+                  {userPermissions.canViewMembers && (
+                    <Link href="/organization/members">
+                      <DropdownMenuItem className="flex items-center space-x-2">
+                        <Users className="h-4 w-4" />
+                        <span>Manage Members</span>
+                      </DropdownMenuItem>
+                    </Link>
+                  )}
+                  {userPermissions.canUpdate && (
+                    <Link href="/organization/settings">
+                      <DropdownMenuItem className="flex items-center space-x-2">
+                        <Settings className="h-4 w-4" />
+                        <span>Organization Settings</span>
+                      </DropdownMenuItem>
+                    </Link>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           )}
         </div>
 
@@ -165,42 +193,6 @@ export default function OrganizationPage() {
           </span>
         </div>
       </div>
-
-      {/* Quick Actions */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Activity className="h-5 w-5" />
-            <span>Quick Actions</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {userPermissions.canViewMembers && (
-              <Link href="/organization/members">
-                <Button variant="outline" className="w-full justify-start">
-                  <Users className="h-4 w-4 mr-2" />
-                  Manage Members
-                </Button>
-              </Link>
-            )}
-            
-            {userPermissions.canUpdate && (
-              <Link href="/organization/settings">
-                <Button variant="outline" className="w-full justify-start">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Organization Settings
-                </Button>
-              </Link>
-            )}
-
-            <Button variant="outline" className="w-full justify-start">
-              <Globe className="h-4 w-4 mr-2" />
-              View Public Profile
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Organization Details */}
       <div className="space-y-6">
