@@ -38,24 +38,9 @@ const navigationItems = [
     icon: LayoutDashboard,
   },
   {
-    name: 'Organization',
-    href: '/organization',
-    icon: Building2,
-  },
-  {
     name: 'Users',
     href: '/users',
     icon: Users,
-  },
-  {
-    name: 'Billing',
-    href: '/billing',
-    icon: CreditCard,
-  },
-  {
-    name: 'Settings',
-    href: '/settings',
-    icon: Settings,
   },
 ];
 
@@ -101,8 +86,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     } else if (pathname === '/organization/settings') {
       breadcrumbs.push({ name: 'Organization', href: '/organization' });
       breadcrumbs.push({ name: 'Settings', href: null });
-    } else if (pathname === '/organizations') {
-      breadcrumbs.push({ name: 'Organizations', href: null });
     } else if (pathname === '/users') {
       breadcrumbs.push({ name: 'Users', href: null });
     } else if (pathname === '/billing') {
@@ -120,8 +103,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       } else {
         breadcrumbs.push({ name: 'Organization', href: null });
       }
-    } else if (pathname.startsWith('/organizations')) {
-      breadcrumbs.push({ name: 'Organizations', href: null });
     } else {
       breadcrumbs.push({ name: 'Dashboard', href: null });
     }
@@ -159,7 +140,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <button
                 key={item.name}
                 onClick={() => handleNavigation(item.href)}
-                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors cursor-pointer ${
                   isActive
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
@@ -193,7 +174,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                         {breadcrumb.href ? (
                           <button
                             onClick={() => router.push(breadcrumb.href!)}
-                            className="text-xl font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                            className="text-xl font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                           >
                             {breadcrumb.name}
                           </button>
@@ -224,11 +205,32 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem>
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
+                  <DropdownMenuItem onClick={() => router.push('/settings')}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => router.push('/billing')}>
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    <span>Billing</span>
+                  </DropdownMenuItem>
+                  {currentOrganization && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => router.push('/organization')}>
+                        <Building2 className="mr-2 h-4 w-4" />
+                        <span>Organization</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => router.push('/organization/settings')}>
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Org Settings</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => router.push('/organization/members')}>
+                        <Users className="mr-2 h-4 w-4" />
+                        <span>Members</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
                   <DropdownMenuItem onClick={handleSignOut} className="text-red-600">
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Sign out</span>
