@@ -88,52 +88,52 @@ export function SignInForm() {
     <div className="w-full max-w-md mx-auto">
       <form onSubmit={handleSubmit(handleSignIn)} className="space-y-6">
         {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
+          <Alert variant="destructive" className="bg-red-950/50 border-red-800/50">
+            <AlertDescription className="text-red-300">{error}</AlertDescription>
           </Alert>
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="email">Email Address</Label>
+          <Label htmlFor="email" className="text-gray-200">Email Address</Label>
           <div className="relative">
-            <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-300" />
             <Input
               id="email"
               type="email"
               {...register('email')}
               placeholder="john@example.com"
-              className="pl-10"
+              className="pl-10 bg-white/10 border-white/30 text-white placeholder:text-gray-400"
               disabled={!!isLoading}
             />
           </div>
           {errors.email && (
-            <p className="text-sm text-red-600">{errors.email.message}</p>
+            <p className="text-sm text-red-400">{errors.email.message}</p>
           )}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password" className="text-gray-200">Password</Label>
           <div className="relative">
-            <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-300" />
             <Input
               id="password"
               type={showPassword ? 'text' : 'password'}
               {...register('password')}
               placeholder="Enter your password"
-              className="pl-10 pr-10"
+              className="pl-10 pr-10 bg-white/10 border-white/30 text-white placeholder:text-gray-400"
               disabled={!!isLoading}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3 h-4 w-4 text-gray-400 hover:text-gray-600 cursor-pointer"
+              className="absolute right-3 top-3 h-4 w-4 text-gray-300 hover:text-gray-100 cursor-pointer"
               disabled={!!isLoading}
             >
               {showPassword ? <EyeOff /> : <Eye />}
             </button>
           </div>
           {errors.password && (
-            <p className="text-sm text-red-600">{errors.password.message}</p>
+            <p className="text-sm text-red-400">{errors.password.message}</p>
           )}
         </div>
 
@@ -142,16 +142,16 @@ export function SignInForm() {
             <input
               id="remember"
               type="checkbox"
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              className="h-4 w-4 text-cyan-600 focus:ring-cyan-500 border-gray-300 rounded bg-transparent"
               disabled={!!isLoading}
             />
-            <Label htmlFor="remember" className="text-sm text-gray-600">
+            <Label htmlFor="remember" className="text-sm text-gray-300">
               Remember me
             </Label>
           </div>
           <button
             type="button"
-            className="text-sm font-medium text-blue-600 hover:text-blue-500 cursor-pointer"
+            className="text-sm font-medium text-cyan-400 hover:text-cyan-300 cursor-pointer"
             disabled={!!isLoading}
           >
             Forgot password?
@@ -183,7 +183,7 @@ export function SignInForm() {
         <button
           onClick={handleGoogleSignIn}
           disabled={!!isLoading}
-          className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 cursor-pointer"
+          className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 cursor-pointer bg-transparent"
         >
           {isLoading === 'google' ? (
             <>
@@ -210,7 +210,7 @@ export function SignInForm() {
         <button
           onClick={handleLinkedInSignIn}
           disabled={!!isLoading}
-          className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 cursor-pointer"
+          className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 cursor-pointer bg-transparent"
         >
           {isLoading === 'linkedin_oidc' ? (
             <>
@@ -233,13 +233,13 @@ export function SignInForm() {
       </div>
 
       <div className="mt-6 text-center">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-400">
           By signing in, you agree to the{' '}
-          <Link href="/terms" className="text-primary hover:underline cursor-pointer">
+          <Link href="/terms" className="text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer">
             Terms of Service
           </Link>{' '}
           and{' '}
-          <Link href="/privacy" className="text-primary hover:underline cursor-pointer">
+          <Link href="/privacy" className="text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer">
             Privacy Policy
           </Link>
         </p>

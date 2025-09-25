@@ -145,87 +145,87 @@ export function SignUpForm() {
     <div className="w-full max-w-md mx-auto">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
+          <Alert variant="destructive" className="bg-red-950/50 border-red-800/50">
+            <AlertDescription className="text-red-300">{error}</AlertDescription>
           </Alert>
         )}
         
         {success && (
-          <Alert className="border-green-200 bg-green-50">
-            <AlertDescription className="text-green-800">{success}</AlertDescription>
+          <Alert className="border-green-700/50 bg-green-950/30">
+            <AlertDescription className="text-green-300">{success}</AlertDescription>
           </Alert>
         )}
         
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="firstName">First Name</Label>
+            <Label htmlFor="firstName" className="text-gray-200">First Name</Label>
             <div className="relative">
-              <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <User className="absolute left-3 top-3 h-4 w-4 text-gray-300" />
               <Input
                 id="firstName"
                 {...register('firstName')}
                 placeholder="John"
-                className="pl-10"
+                className="pl-10 bg-white/10 border-white/30 text-white placeholder:text-gray-400"
                 disabled={!!isLoading}
               />
             </div>
             {errors.firstName && (
-              <p className="text-sm text-red-600">{errors.firstName.message}</p>
+              <p className="text-sm text-red-400">{errors.firstName.message}</p>
             )}
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="lastName">Last Name</Label>
+            <Label htmlFor="lastName" className="text-gray-200">Last Name</Label>
             <div className="relative">
-              <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <User className="absolute left-3 top-3 h-4 w-4 text-gray-300" />
               <Input
                 id="lastName"
                 {...register('lastName')}
                 placeholder="Doe"
-                className="pl-10"
+                className="pl-10 bg-white/10 border-white/30 text-white placeholder:text-gray-400"
                 disabled={!!isLoading}
               />
             </div>
             {errors.lastName && (
-              <p className="text-sm text-red-600">{errors.lastName.message}</p>
+              <p className="text-sm text-red-400">{errors.lastName.message}</p>
             )}
           </div>
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="email">Email Address</Label>
+          <Label htmlFor="email" className="text-gray-200">Email Address</Label>
           <div className="relative">
-            <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-300" />
             <Input
               id="email"
               type="email"
               {...register('email')}
               placeholder="john@example.com"
-              className="pl-10"
+              className="pl-10 bg-white/10 border-white/30 text-white placeholder:text-gray-400"
               disabled={!!isLoading}
             />
           </div>
           {errors.email && (
-            <p className="text-sm text-red-600">{errors.email.message}</p>
+            <p className="text-sm text-red-400">{errors.email.message}</p>
           )}
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password" className="text-gray-200">Password</Label>
           <div className="relative">
-            <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-300" />
             <Input
               id="password"
               type={showPassword ? 'text' : 'password'}
               {...register('password')}
               placeholder="Create a strong password"
-              className="pl-10 pr-10"
+              className="pl-10 pr-10 bg-white/10 border-white/30 text-white placeholder:text-gray-400"
               disabled={!!isLoading}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3 h-4 w-4 text-gray-400 hover:text-gray-600 cursor-pointer"
+              className="absolute right-3 top-3 h-4 w-4 text-gray-300 hover:text-gray-100 cursor-pointer"
               disabled={!!isLoading}
             >
               {showPassword ? <EyeOff /> : <Eye />}
@@ -239,46 +239,46 @@ export function SignUpForm() {
                   <div
                     key={level}
                     className={`h-1 flex-1 rounded ${
-                      passwordStrength >= level ? strengthColors[passwordStrength - 1] : 'bg-gray-200'
+                      passwordStrength >= level ? strengthColors[passwordStrength - 1] : 'bg-gray-600'
                     }`}
                   />
                 ))}
               </div>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-gray-400">
                 Password strength: {strengthLabels[passwordStrength - 1] || 'Very Weak'}
               </p>
             </div>
           )}
           
           {errors.password && (
-            <p className="text-sm text-red-600">{errors.password.message}</p>
+            <p className="text-sm text-red-400">{errors.password.message}</p>
           )}
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="passwordConfirm">Confirm Password</Label>
+          <Label htmlFor="passwordConfirm" className="text-gray-200">Confirm Password</Label>
           <div className="relative">
-            <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-300" />
             <Input
               id="passwordConfirm"
               type={showConfirmPassword ? 'text' : 'password'}
               {...register('passwordConfirm')}
               placeholder="Confirm your password"
-              className="pl-10 pr-10"
+              className="pl-10 pr-10 bg-white/10 border-white/30 text-white placeholder:text-gray-400"
               disabled={!!isLoading}
               onBlur={() => passwordConfirm && trigger('passwordConfirm')}
             />
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-3 top-3 h-4 w-4 text-gray-400 hover:text-gray-600 cursor-pointer"
+              className="absolute right-3 top-3 h-4 w-4 text-gray-300 hover:text-gray-100 cursor-pointer"
               disabled={!!isLoading}
             >
               {showConfirmPassword ? <EyeOff /> : <Eye />}
             </button>
           </div>
           {errors.passwordConfirm && (
-            <p className="text-sm text-red-600">{errors.passwordConfirm.message}</p>
+            <p className="text-sm text-red-400">{errors.passwordConfirm.message}</p>
           )}
         </div>
         
@@ -312,7 +312,7 @@ export function SignUpForm() {
         <button
           onClick={handleGoogleSignUp}
           disabled={!!isLoading}
-          className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 cursor-pointer"
+          className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 cursor-pointer bg-transparent"
         >
           {isLoading === 'google' ? (
             <>
@@ -339,7 +339,7 @@ export function SignUpForm() {
         <button
           onClick={handleLinkedInSignUp}
           disabled={!!isLoading}
-          className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 cursor-pointer"
+          className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 cursor-pointer bg-transparent"
         >
           {isLoading === 'linkedin_oidc' ? (
             <>
