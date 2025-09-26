@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from opentelemetry import trace
 
 from src.organization.models import Organization, OrganizationCreate, OrganizationUpdate
+from src.organization.member_models import OrganizationMember
 from src.organization.service import organization_service
 from src.auth.middleware import get_authenticated_user
 from src.auth.models import UserProfile
@@ -101,6 +102,38 @@ async def create_self_organization(org_data: OrganizationCreate, user_data: tupl
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create organization: {str(e)}"
         )
+
+
+@organization_router.get("/{org_id}/members", response_model=list[OrganizationMember])
+@tracer.start_as_current_span("organization.routes.get_organization_members")
+async def get_organization_members(org_id: UUID, user_data: tuple[UUID, UserProfile] = Depends(get_authenticated_user)):
+    """Get all members of an organization."""
+    current_user_id, user_profile = user_data
+    current_span = trace.get_current_span()
+    current_span.set_attribute("user.id", str(current_user_id))
+    current_span.set_attribute("organization.id", str(org_id))
+
+    # Check if user has permission to view organization members
+    if not user_profile.has_role("platform_admin"):
+        if not user_profile.has_role("org_admin", str(org_id)):
+            if not user_profile.has_permission("organization:read", str(org_id)):
+                current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Insufficient permissions to view organization members"))
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Insufficient permissions to view organization members"
+                )
+    
+    members, error = await user_role_service.get_users_by_organization(org_id)
+    if error:
+        current_span.set_status(trace.Status(trace.StatusCode.ERROR, error))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error
+        )
+    
+    current_span.set_attribute("members.count", len(members))
+    current_span.set_status(trace.Status(trace.StatusCode.OK))
+    return members
 
 
 @organization_router.get("/{org_id}", response_model=Organization)

@@ -213,7 +213,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                     <CreditCard className="mr-2 h-4 w-4" />
                     <span>Billing</span>
                   </DropdownMenuItem>
-                  {currentOrganization && (
+                  {currentOrganization && user && (user.hasRole('platform_admin') || user.hasRole('org_admin', currentOrganization.id)) && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => router.push('/organization')}>

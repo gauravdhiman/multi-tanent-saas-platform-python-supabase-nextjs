@@ -5,6 +5,7 @@ import { getTracer, getMeter, ensureOpentelemetryIsInitialized } from '@/lib/ope
 
 // Import types from centralized location
 import type { Organization, OrganizationCreate, OrganizationUpdate } from '@/types/organization';
+import type { Member } from '@/types/user';
 
 // Organization Service class
 class OrganizationService {
@@ -225,6 +226,12 @@ class OrganizationService {
     await this.fetchWithAuth(`/organizations/${orgId}`, {
       method: 'DELETE',
     });
+  }
+
+  // Get organization members
+  async getOrganizationMembers(orgId: string): Promise<Member[]> {
+    const response = await this.fetchWithAuth(`/organizations/${orgId}/members`);
+    return response.json();
   }
 }
 

@@ -18,9 +18,11 @@ export const supabase = createClient(
   supabaseAnonKey || 'placeholder-key',
   {
     auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true,
+      autoRefreshToken: true,    // Auto-refresh tokens before expiry (network call)
+      persistSession: true,      // Store session in localStorage for fast restoration
+      detectSessionInUrl: true,  // Handle OAuth redirect callbacks
+      // storageKey: 'supabase.auth.token', // Default localStorage key
+      // storage: window.localStorage,       // Default storage mechanism
     },
   }
 );

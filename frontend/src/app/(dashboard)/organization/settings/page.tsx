@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { useOrganization } from '@/contexts/organization-context';
-import { organizationService } from '@/services/organization-service';
-import { rbacService } from '@/services/rbac-service';
+import { AccessDenied } from '@/components/ui/access-denied';
 import { OrganizationEditDialog } from '@/components/organizations/organization-edit-dialog';
 import { OrganizationDeleteDialog } from '@/components/organizations/organization-delete-dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,9 +48,9 @@ export default function OrganizationSettingsPage() {
       const isOrgAdmin = user.hasRole('org_admin', currentOrganization.id);
 
       // Grant basic organization management permissions
-      const canUpdate = isPlatformAdmin || isOrgAdmin || true; // Allow basic org updates
+      const canUpdate = isPlatformAdmin || isOrgAdmin;
       const canDelete = isPlatformAdmin; // Only platform admins can delete
-      const canManageMembers = isPlatformAdmin || isOrgAdmin || true; // Allow member management
+      const canManageMembers = isPlatformAdmin || isOrgAdmin;
 
       setUserPermissions({
         canUpdate,
@@ -106,13 +105,11 @@ export default function OrganizationSettingsPage() {
   }
 
   if (!userPermissions.canUpdate) {
-    return (
-      <div className="p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-gray-500">You don&apos;t have permission to view organization settings</div>
-        </div>
-      </div>
-    );
+    return <AccessDenied 
+      title="Access Denied"
+      description="You do not have permission to view organization settings. Only platform admins and organization admins can access this page."
+      redirectPath="/dashboard"
+    />;
   }
 
   return (

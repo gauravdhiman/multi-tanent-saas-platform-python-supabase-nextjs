@@ -1,13 +1,37 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { OrganizationCreationForm } from '@/components/auth/organization-creation-form';
 import { ProtectedRoute } from '@/components/auth/protected-route';
+import { useOrganization } from '@/contexts/organization-context';
+import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 export default function OrganizationCreationPage() {
   const router = useRouter();
+  const { currentOrganization, loading } = useOrganization();
+  
+  useEffect(() => {
+    if (!loading && currentOrganization) {
+      router.push('/dashboard');
+    }
+  }, [currentOrganization, loading, router]);
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="flex flex-col items-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (currentOrganization) {
+    return null; // Will redirect
+  }
   
   const handleSkip = () => {
     // Navigate to dashboard when skipping

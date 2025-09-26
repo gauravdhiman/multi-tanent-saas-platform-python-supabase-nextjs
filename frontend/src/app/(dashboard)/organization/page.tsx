@@ -1,26 +1,29 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { useOrganization } from '@/contexts/organization-context';
+import { AccessDenied } from '@/components/ui/access-denied';
 import { OrganizationEditDialog } from '@/components/organizations/organization-edit-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Building2, 
-  Users, 
-  Settings, 
-  Calendar, 
+import {
+  Building2,
+  Users,
+  Settings,
+  Calendar,
   Edit3,
   Shield,
-  Activity
+  Activity,
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
 import type { UserRoleWithPermissions } from '@/types/user';
 
 export default function OrganizationPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const { currentOrganization, loading: orgLoading, error: orgError } = useOrganization();
 
@@ -79,8 +82,8 @@ export default function OrganizationPage() {
         const isOrgAdmin = user.hasRole('org_admin', currentOrganization.id);
 
         // Grant permissions based on roles
-        const canUpdate = isPlatformAdmin || isOrgAdmin || false; // Allow basic update for organization members
-        const canViewMembers = isPlatformAdmin || isOrgAdmin || false; // Allow basic member viewing for organization members
+        const canUpdate = isPlatformAdmin || isOrgAdmin;
+        const canViewMembers = isPlatformAdmin || isOrgAdmin;
 
         setUserPermissions({
           canUpdate,
@@ -120,6 +123,15 @@ export default function OrganizationPage() {
         </div>
       </div>
     );
+  }
+
+
+  if (!userPermissions.isPlatformAdmin && !userPermissions.isOrgAdmin) {
+    return <AccessDenied 
+      title="Access Denied"
+      description="You do not have permission to view organization pages. Please contact your organization administrator or platform admin for access."
+      redirectPath="/dashboard"
+    />;
   }
 
   if (error || !currentOrganization) {

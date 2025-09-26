@@ -1,8 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/contexts/auth-context';
+import React from 'react';
 import { useOrganization } from '@/contexts/organization-context';
+import { useOrganizationMembers } from '@/hooks/use-organization-members';
+import { useUserPermissions } from '@/hooks/use-user-permissions';
+import { AccessDenied } from '@/components/ui/access-denied';
+import { LoadingState } from '@/components/ui/loading-state';
+import { ErrorState } from '@/components/ui/error-state';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,96 +17,33 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { Member } from '@/types/user';
 
-export default function OrganizationMembersPage() {
-  const { user } = useAuth();
-  const { currentOrganization, loading: orgLoading, error: orgError } = useOrganization();
-  const [members, setMembers] = useState<Member[]>([]);
-  const [userPermissions, setUserPermissions] = useState({
-    canManageMembers: false,
-    canViewMembers: false,
-    isPlatformAdmin: false,
-    isOrgAdmin: false
-  });
+function MembersPageContent() {
+  const { currentOrganization } = useOrganization();
+  const { data: members = [], isLoading, error, refetch } = useOrganizationMembers();
+  const userPermissions = useUserPermissions();
 
-  useEffect(() => {
-    if (!user || orgLoading) return;
-
-    if (currentOrganization) {
-      // Load members (mock data for now)
-      setMembers([
-        {
-          id: user?.id || '1',
-          email: user?.email || 'current@example.com',
-          first_name: user?.firstName || 'Current',
-          last_name: user?.lastName || 'User',
-          is_verified: user?.emailConfirmedAt ? true : false,
-          created_at: new Date().toISOString(),
-          roles: [{ id: '1', name: 'org_admin', description: 'Organization Administrator' }]
-        }
-      ]);
-    }
-  }, [user, currentOrganization, orgLoading]);
-
-  useEffect(() => {
-    if (!user || !currentOrganization) return;
-
-    try {
-      // Check permissions using the user profile from auth context
-      const isPlatformAdmin = user.hasRole('platform_admin');
-      const isOrgAdmin = user.hasRole('org_admin', currentOrganization.id);
-
-      // Grant basic member management permissions
-      const canManageMembers = isPlatformAdmin || isOrgAdmin || true; // Allow basic member management
-      const canViewMembers = isPlatformAdmin || isOrgAdmin || true; // Allow viewing members
-
-      setUserPermissions({
-        canManageMembers,
-        canViewMembers,
-        isPlatformAdmin,
-        isOrgAdmin
-      });
-    } catch (err) {
-      console.error('Error checking user permissions:', err);
-      // Fallback: provide basic permissions
-      setUserPermissions({
-        canManageMembers: true,
-        canViewMembers: true,
-        isPlatformAdmin: false,
-        isOrgAdmin: false
-      });
-    }
-  }, [user, currentOrganization]);
-
-  if (orgLoading) {
-    return (
-      <div className="p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-gray-500">Loading members...</div>
-        </div>
-      </div>
-    );
+  if (isLoading) {
+    return <LoadingState message="Loading members..." />;
   }
 
-  if (orgError || !currentOrganization) {
+  if (error) {
     return (
-      <div className="p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-red-500">{orgError || 'Organization not found'}</div>
-        </div>
-      </div>
+      <ErrorState
+        title="Failed to load members"
+        message={error instanceof Error ? error.message : "Unable to load organization members. Please try again."}
+        onRetry={() => refetch()}
+        variant="default"
+      />
     );
   }
 
   if (!userPermissions.canViewMembers) {
-    return (
-      <div className="p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-gray-500">You don&apos;t have permission to view members</div>
-        </div>
-      </div>
-    );
+    return <AccessDenied 
+      title="Access Denied"
+      description="You do not have permission to view organization members. Only platform admins and organization admins can access this page."
+      redirectPath="/dashboard"
+    />;
   }
 
   return (
@@ -270,4 +211,26 @@ export default function OrganizationMembersPage() {
       </Card>
     </div>
   );
+}
+
+export default function OrganizationMembersPage() {
+  const { loading: orgLoading, error: orgError, currentOrganization } = useOrganization();
+
+  // Handle organization loading states at the top level
+  if (orgLoading) {
+    return <LoadingState message="Loading organization..." />;
+  }
+
+  if (orgError || !currentOrganization) {
+    return (
+      <ErrorState
+        title="Organization not found"
+        message={orgError || 'Unable to load organization. Please check your access permissions.'}
+        variant="default"
+      />
+    );
+  }
+
+  // Once organization is loaded, render the main content
+  return <MembersPageContent />;
 }

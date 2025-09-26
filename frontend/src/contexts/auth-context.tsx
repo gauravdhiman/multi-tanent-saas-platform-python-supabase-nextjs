@@ -5,21 +5,13 @@
  * Provides authentication state and methods throughout the application.
  */
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session, Provider } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import { apiClient } from '@/lib/api/client';
 import type { AuthUser, SignUpData, SignInData, AuthContextType, AuthProviderProps } from '@/types/auth';
 import type { UserRoleAssignment } from '@/types/rbac';
-import type { ApiResponse } from '@/types/api';
+import { useUserProfile } from '@/hooks/use-user-profile';
 
-interface UserProfileResponse {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  roles: UserRoleAssignment[];
-}
 import { getMeter } from '@/lib/opentelemetry';
 import {
   withTelemetrySignUp,
@@ -49,74 +41,8 @@ const authFailureCounter = meter?.createCounter('auth_failures', {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<AuthUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [profileCache, setProfileCache] = useState<Map<string, UserRoleAssignment[]>>(new Map());
-
-    // Fetch user profile from backend API with caching
-  const fetchUserProfile = useCallback(async (userId: string): Promise<UserRoleAssignment[] | undefined> => {
-    // Check cache first
-    if (profileCache.has(userId)) {
-      return profileCache.get(userId);
-    }
-
-    try {
-      const response: ApiResponse<UserProfileResponse> = await apiClient.get(`/auth/me`);
-      const userData = response.data;
-      if (userData && userData.roles) {
-        // Cache the result
-        setProfileCache(prev => new Map(prev).set(userId, userData.roles));
-        return userData.roles;
-      }
-    } catch (error) {
-      console.warn('Failed to fetch user profile from backend:', error);
-    }
-    return undefined;
-  }, [profileCache]);
-  
-  useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      if (session?.user) {
-        // Fetch user profile with roles from backend
-        const roles = await fetchUserProfile(session.user.id);
-        setUser(transformSupabaseUser(session.user, roles));
-      } else {
-        setUser(null);
-      }
-      setLoading(false);
-      logInfo('Auth session initialized', {
-        hasSession: !!session,
-        userId: session?.user?.id
-      });
-    });
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      if (session?.user) {
-        // Fetch user profile with roles from backend
-        const roles = await fetchUserProfile(session.user.id);
-        setUser(transformSupabaseUser(session.user, roles));
-      } else {
-        setUser(null);
-      }
-      setLoading(false);
-
-      // Log auth state changes with OpenTelemetry logger
-      logInfo('Auth state changed', {
-        event: _event,
-        hasSession: !!session,
-        userId: session?.user?.id
-      });
-    });
-
-    return () => subscription.unsubscribe();
-  }, [fetchUserProfile]);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Transform Supabase user to our AuthUser type
   const transformSupabaseUser = (user: User, roles?: UserRoleAssignment[]): AuthUser => {
@@ -175,6 +101,83 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     return authUser;
   };
+
+  // Use React Query for user profile data
+  const { 
+    data: userRoles, 
+    isLoading: profileLoading, 
+    refetch: refetchProfile 
+  } = useUserProfile(session?.user?.id);
+  
+  // Derive user state from session and userRoles
+  const user = session?.user && userRoles !== undefined 
+    ? transformSupabaseUser(session.user, userRoles) 
+    : null;
+  
+  // Derive loading state - don't show as loaded until auth is initialized
+  const loading = !isInitialized || (session?.user ? profileLoading : false);
+
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        // Get initial session from localStorage (no network call)
+        // This only reads from browser storage and validates JWT locally
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (!error && session) {
+          setSession(session);
+          logInfo('Auth session restored from storage', {
+            hasSession: true,
+            userId: session.user?.id,
+            source: 'localStorage',
+            expiresAt: session.expires_at
+          });
+        } else {
+          // This is normal for:
+          // - First-time visitors
+          // - Users who logged out
+          // - Expired sessions that were cleared
+          logInfo('No valid session in storage - user needs to log in', {
+            hasSession: false,
+            source: 'localStorage',
+            reason: error?.message || 'No session found'
+          });
+        }
+      } catch (error) {
+        // This would only happen if localStorage is unavailable
+        console.warn('Failed to access session storage:', error);
+        logInfo('Auth session initialization failed', {
+          hasSession: false,
+          error: error instanceof Error ? error.message : 'Storage unavailable'
+        });
+      } finally {
+        // Always mark as initialized so app can show login screen if needed
+        setIsInitialized(true);
+      }
+    };
+
+    // Initialize auth state
+    initializeAuth();
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setIsInitialized(true);
+      
+      // Log auth state changes with OpenTelemetry logger
+      logInfo('Auth state changed', {
+        event: _event,
+        hasSession: !!session,
+        userId: session?.user?.id,
+        source: 'auth_change'
+      });
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
 
   // Sign up with email and password
   const signUp = withTelemetrySignUp(
@@ -274,20 +277,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     { operation: 'Signout', attributes: { operation: 'signout' } }
   );
 
-  // Refresh user profile from backend
+  // Refresh user profile from backend using React Query
   const refreshUserProfile = async () => {
     if (!session?.user?.id) return;
-
+    
     try {
-      // Clear cache for this user to force refresh
-      setProfileCache(prev => {
-        const newCache = new Map(prev);
-        newCache.delete(session.user.id);
-        return newCache;
-      });
-      const roles = await fetchUserProfile(session.user.id);
-      const updatedUser = transformSupabaseUser(session.user, roles);
-      setUser(updatedUser);
+      await refetchProfile();
     } catch (error) {
       console.warn('Failed to refresh user profile:', error);
     }

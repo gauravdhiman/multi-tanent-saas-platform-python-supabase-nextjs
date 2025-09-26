@@ -10,6 +10,7 @@ from config import supabase_config
 from src.rbac.user_roles.models import UserRole, UserRoleCreate, UserRoleUpdate, UserWithRoles
 from src.rbac.roles.models import Role, RoleWithPermissions, UserRoleWithPermissions
 from src.rbac.permissions.models import Permission
+from src.organization.member_models import OrganizationMember, MemberRole
 
 logger = logging.getLogger(__name__)
 
@@ -436,6 +437,257 @@ class UserRoleService:
             current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             user_role_errors_counter.add(1, {"operation": "user_has_role", "error": "exception"})
             return False, str(e)
+
+    @tracer.start_as_current_span("user_role.get_users_by_organization")
+    async def get_users_by_organization(self, organization_id: UUID) -> tuple[list[OrganizationMember], Optional[str]]:
+        """Get all users (members) for an organization."""
+        user_role_operations_counter.add(1, {"operation": "get_users_by_organization"})
+        
+        # Set attribute on current span
+        current_span = trace.get_current_span()
+        current_span.set_attribute("organization.id", str(organization_id))
+        
+        try:
+            # Optimized query using a single database query with joins to get user-role relationship with role data
+            # This query joins user_roles with roles table to get role information in a single DB query
+            response = (
+                self.supabase
+                .table("user_roles")
+                .select("user_id, roles(id, name, description)")
+                .eq("organization_id", str(organization_id))
+                .execute()
+            )
+            
+            if not response.data:
+                current_span.set_attribute("members.count", 0)
+                current_span.set_status(trace.Status(trace.StatusCode.OK))
+                return [], None
+
+            # Process the response to group users with their roles
+            user_roles_map = {}
+            unique_user_ids = set()
+
+            for item in response.data:
+                user_id = item["user_id"]
+                role_data = item["roles"]  # The joined role data
+                
+                unique_user_ids.add(user_id)
+                
+                if user_id not in user_roles_map:
+                    user_roles_map[user_id] = []
+
+                if role_data:
+                    user_roles_map[user_id].append(MemberRole(
+                        id=role_data["id"],
+                        name=role_data["name"],
+                        description=role_data["description"]
+                    ))
+                else:
+                    logger.warning(f"Role data missing for user {user_id}")
+
+            # Now fetch user information from Supabase Auth using bulk approach
+            users_data = {}
+            user_id_strings = [str(uid) for uid in unique_user_ids]
+            
+            try:
+                # Attempt to use list_users to get users in bulk - most efficient approach
+                page = 1
+                per_page = 1000  # Max allowed by Supabase
+                all_users_found = False
+                
+                while not all_users_found:
+                    try:
+                        # Get a page of users
+                        users_response = self.supabase.auth.admin.list_users(page=page, per_page=per_page)
+                        
+                        # Handle different response structures - Supabase might return data directly or in .data
+                        users_list = None
+                        if hasattr(users_response, 'users'):
+                            # Newer Supabase client version
+                            users_list = users_response.users
+                        elif hasattr(users_response, 'data'):
+                            # Older Supabase client version or different response format
+                            users_list = users_response.data
+                        elif isinstance(users_response, list):
+                            # Response might be a direct list
+                            users_list = users_response
+                        else:
+                            # Unknown response format
+                            logger.warning(f"Unknown response format for list_users: {type(users_response)}")
+                            break
+                        
+                        if not users_list:
+                            break
+                            
+                        # Filter users we need from this page
+                        for user in users_list:
+                            # Get user ID - might be in different formats depending on client version
+                            user_id = getattr(user, 'id', None)
+                            if user_id is None and hasattr(user, 'get'):
+                                user_id = user.get('id')
+                            
+                            if user_id and user_id in user_id_strings:
+                                # Extract user properties - handle different possible formats
+                                email = getattr(user, 'email', None)
+                                if email is None and hasattr(user, 'get'):
+                                    email = user.get('email', '')
+                                
+                                created_at = getattr(user, 'created_at', None)
+                                if created_at is None and hasattr(user, 'get'):
+                                    created_at = user.get('created_at')
+                                
+                                user_metadata = getattr(user, 'user_metadata', {})
+                                if user_metadata is None and hasattr(user, 'get'):
+                                    user_metadata = user.get('user_metadata', {})
+                                
+                                email_confirmed_at = getattr(user, 'email_confirmed_at', None)
+                                if email_confirmed_at is None and hasattr(user, 'get'):
+                                    email_confirmed_at = user.get('email_confirmed_at')
+                                
+                                users_data[user_id] = {
+                                    "id": user_id,
+                                    "email": email or "",
+                                    "first_name": user_metadata.get("first_name", ""),
+                                    "last_name": user_metadata.get("last_name", ""),
+                                    "is_verified": email_confirmed_at is not None,
+                                    "created_at": created_at.isoformat() if created_at and hasattr(created_at, 'isoformat') else str(created_at) if created_at else ""
+                                }
+                        
+                        # If we found all users we need, stop paginating
+                        if len(users_data) == len(user_id_strings):
+                            all_users_found = True
+                            break
+                            
+                        # If we got less than per_page users, we've reached the end
+                        if len(users_list) < per_page:
+                            break
+                            
+                        page += 1
+                        
+                    except Exception as e:
+                        logger.warning(f"Error in list_users pagination (page {page}): {e}")
+                        break
+                
+                # If we didn't find all users via list_users, fall back to individual calls for the missing ones
+                found_user_ids = set(users_data.keys())
+                missing_user_ids = set(user_id_strings) - found_user_ids
+                
+                if missing_user_ids:
+                    logger.info(f"Fetching {len(missing_user_ids)} missing users individually")
+                    for user_id in missing_user_ids:
+                        try:
+                            user_response = self.supabase.auth.admin.get_user_by_id(user_id)
+                            user = None
+                            if hasattr(user_response, 'user'):
+                                # Newer Supabase client version
+                                user = user_response.user
+                            elif hasattr(user_response, 'data'):
+                                # Older Supabase client version
+                                user = user_response.data
+                            else:
+                                # Direct response
+                                user = user_response
+                            
+                            if user:
+                                # Process user data similar to above
+                                email = getattr(user, 'email', None)
+                                if email is None and hasattr(user, 'get'):
+                                    email = user.get('email', '')
+                                
+                                created_at = getattr(user, 'created_at', None)
+                                if created_at is None and hasattr(user, 'get'):
+                                    created_at = user.get('created_at')
+                                
+                                user_metadata = getattr(user, 'user_metadata', {})
+                                if user_metadata is None and hasattr(user, 'get'):
+                                    user_metadata = user.get('user_metadata', {})
+                                
+                                email_confirmed_at = getattr(user, 'email_confirmed_at', None)
+                                if email_confirmed_at is None and hasattr(user, 'get'):
+                                    email_confirmed_at = user.get('email_confirmed_at')
+                                
+                                users_data[user_id] = {
+                                    "id": user_id,
+                                    "email": email or "",
+                                    "first_name": user_metadata.get("first_name", ""),
+                                    "last_name": user_metadata.get("last_name", ""),
+                                    "is_verified": email_confirmed_at is not None,
+                                    "created_at": created_at.isoformat() if created_at and hasattr(created_at, 'isoformat') else str(created_at) if created_at else ""
+                                }
+                        except Exception as e:
+                            logger.warning(f"Could not fetch missing user {user_id}: {e}")
+                            continue
+                            
+            except Exception as e:
+                logger.error(f"Error with list_users approach: {e}")
+                # Complete fallback to individual calls
+                logger.info("Falling back to individual user fetch calls")
+                for user_id in user_id_strings:
+                    try:
+                        user_response = self.supabase.auth.admin.get_user_by_id(user_id)
+                        user = None
+                        if hasattr(user_response, 'user'):
+                            # Newer Supabase client version
+                            user = user_response.user
+                        elif hasattr(user_response, 'data'):
+                            # Older Supabase client version
+                            user = user_response.data
+                        else:
+                            # Direct response
+                            user = user_response
+                        
+                        if user:
+                            # Process user data similar to above
+                            email = getattr(user, 'email', None)
+                            if email is None and hasattr(user, 'get'):
+                                email = user.get('email', '')
+                            
+                            created_at = getattr(user, 'created_at', None)
+                            if created_at is None and hasattr(user, 'get'):
+                                created_at = user.get('created_at')
+                            
+                            user_metadata = getattr(user, 'user_metadata', {})
+                            if user_metadata is None and hasattr(user, 'get'):
+                                user_metadata = user.get('user_metadata', {})
+                            
+                            email_confirmed_at = getattr(user, 'email_confirmed_at', None)
+                            if email_confirmed_at is None and hasattr(user, 'get'):
+                                email_confirmed_at = user.get('email_confirmed_at')
+                            
+                            users_data[user_id] = {
+                                "id": user_id,
+                                "email": email or "",
+                                "first_name": user_metadata.get("first_name", ""),
+                                "last_name": user_metadata.get("last_name", ""),
+                                "is_verified": email_confirmed_at is not None,
+                                "created_at": created_at.isoformat() if created_at and hasattr(created_at, 'isoformat') else str(created_at) if created_at else ""
+                            }
+                    except Exception as e:
+                        logger.warning(f"Could not fetch user {user_id}: {e}")
+                        continue
+
+            # Combine user data with roles to create OrganizationMember objects
+            members = []
+            for user_id, roles in user_roles_map.items():
+                user_data = users_data.get(user_id)
+                if user_data:
+                    member_data = {
+                        **user_data,
+                        "roles": roles
+                    }
+                    members.append(OrganizationMember(**member_data))
+
+            logger.info(f"Found {len(members)} organization members for organization {organization_id}")
+            
+            current_span.set_attribute("members.count", len(members))
+            current_span.set_status(trace.Status(trace.StatusCode.OK))
+            return members, None
+            
+        except Exception as e:
+            logger.error(f"Exception while getting users for organization {organization_id}: {e}", exc_info=True)
+            current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
+            user_role_errors_counter.add(1, {"operation": "get_users_by_organization", "error": "exception"})
+            return [], str(e)
 
     @tracer.start_as_current_span("user_role.get_organizations_for_user")
     async def get_organizations_for_user(self, user_id: UUID) -> tuple[list[Any], Optional[str]]:
