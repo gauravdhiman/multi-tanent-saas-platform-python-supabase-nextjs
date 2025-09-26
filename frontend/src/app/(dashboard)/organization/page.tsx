@@ -23,7 +23,6 @@ import Link from 'next/link';
 import type { UserRoleWithPermissions } from '@/types/user';
 
 export default function OrganizationPage() {
-  const router = useRouter();
   const { user } = useAuth();
   const { currentOrganization, loading: orgLoading, error: orgError } = useOrganization();
 

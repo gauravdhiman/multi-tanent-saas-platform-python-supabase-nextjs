@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,7 +24,7 @@ import { OrganizationSelector } from '@/components/organizations/organization-se
 import { toast } from 'sonner';
 
 export default function BillingPage() {
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { loading: authLoading } = useAuth();
   const { currentOrganization, loading: orgLoading } = useOrganization();
   const { 
     data: billingSummary,
@@ -34,18 +34,18 @@ export default function BillingPage() {
     isRefetching
   } = useBillingSummary();
 
-  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [userSelectedTab, setUserSelectedTab] = useState<string | null>(null);
 
   const error = queryError ? (queryError instanceof Error ? queryError.message : 'Unknown error') : null;
 
-  // Set initial tab based on subscription status
-  useEffect(() => {
-    if (billingSummary !== null) {
-      const hasActiveSubscription = billingSummary?.subscription &&
-        ['active', 'trial'].includes(billingSummary.subscription.status);
-      setActiveTab(hasActiveSubscription ? "overview" : "plans");
-    }
-  }, [billingSummary]);
+  const hasActiveSubscription = billingSummary?.subscription && 
+    ['active', 'trial'].includes(billingSummary.subscription.status);
+
+  const activeTab = userSelectedTab ?? (hasActiveSubscription ? 'overview' : 'plans');
+
+  const handleTabChange = (value: string) => {
+    setUserSelectedTab(value);
+  };
 
   const refresh = async () => {
     await refetch();
@@ -88,9 +88,6 @@ export default function BillingPage() {
       </div>
     );
   }
-
-  const hasActiveSubscription = billingSummary?.subscription && 
-    ['active', 'trial'].includes(billingSummary.subscription.status);
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
@@ -188,7 +185,7 @@ export default function BillingPage() {
       )}
 
       {/* Main Content Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="plans">Plans</TabsTrigger>
@@ -241,7 +238,7 @@ export default function BillingPage() {
                 <p className="text-muted-foreground mb-4">
                   You don&apos;t have an active subscription yet. Browse our plans to get started.
                 </p>
-                <Button onClick={() => setActiveTab('plans')}>
+                <Button onClick={() => handleTabChange('plans')}>
                   View Plans
                 </Button>
               </CardContent>
