@@ -11,6 +11,8 @@ import { SubscriptionPlan, OrganizationSubscriptionWithPlan, CreditBalance } fro
 import { useAuth } from '@/contexts/auth-context';
 import { toast } from 'sonner';
 import { getStripe } from '@/lib/stripe';
+import { useSubscriptionPlans } from '@/hooks/use-subscription-plans';
+import { useCreditBalance } from '@/hooks/use-credit-balance';
 
 interface PlanSelectionProps {
   organizationId: string;
@@ -19,33 +21,19 @@ interface PlanSelectionProps {
 }
 
 export function PlanSelection({ organizationId, currentSubscription, onPlanSelected }: PlanSelectionProps) {
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: plans, isLoading: loadingPlans, error: plansError } = useSubscriptionPlans();
+  const { data: currentCreditBalance, isLoading: loadingCredits, error: creditsError } = useCreditBalance();
   const [subscribingToPlan, setSubscribingToPlan] = useState<string | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
-  const [currentCreditBalance, setCurrentCreditBalance] = useState<CreditBalance | null>(null);
   const { user } = useAuth();
 
-  const loadPlans = useCallback(async () => {
-    try {
-      const [plansData, creditData] = await Promise.all([
-        billingService.getSubscriptionPlans(),
-        billingService.getCreditBalance(organizationId)
-      ]);
-      setPlans(plansData);
-      setCurrentCreditBalance(creditData);
-    } catch (error) {
-      console.error('Failed to load subscription plans:', error);
-      toast.error('Failed to load subscription plans');
-    } finally {
-      setLoading(false);
-    }
-  }, [organizationId]);
+  const loading = loadingPlans || loadingCredits;
+  const error = plansError || creditsError;
 
-  useEffect(() => {
-    loadPlans();
-  }, [loadPlans]);
+  if (error) {
+    toast.error(error.message);
+  }
 
   const handleSubscribe = async (plan: SubscriptionPlan) => {
     if (!user) {
@@ -149,6 +137,7 @@ export function PlanSelection({ organizationId, currentSubscription, onPlanSelec
   };
 
   const getPopularPlan = () => {
+    if (!plans) return null;
     // Mark the middle-priced plan as popular
     const sortedPlans = [...plans].sort((a, b) => a.price_amount - b.price_amount);
     return sortedPlans[Math.floor(sortedPlans.length / 2)]?.id;
@@ -163,7 +152,7 @@ export function PlanSelection({ organizationId, currentSubscription, onPlanSelec
     );
   }
 
-  if (plans.length === 0) {
+  if (!plans || plans.length === 0) {
     return (
       <div className="text-center py-12">
         <p className="text-muted-foreground">No subscription plans available</p>

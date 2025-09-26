@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Coins, Star } from 'lucide-react';
-import { billingService } from '@/services/billing-service';
 import { CreditProduct } from '@/types/billing';
 import { useAuth } from '@/contexts/auth-context';
 import { toast } from 'sonner';
 import { getStripe } from '@/lib/stripe';
+import { useCreditProducts } from '@/hooks/use-credit-products';
+import { billingService } from '@/services/billing-service';
 
 interface CreditPurchaseProps {
   organizationId: string;
@@ -17,26 +18,13 @@ interface CreditPurchaseProps {
 }
 
 export function CreditPurchase({ organizationId, onCreditsPurchased }: CreditPurchaseProps) {
-  const [products, setProducts] = useState<CreditProduct[]>([]);
-  const [loading, setLoading] = useState(true);
   const [purchasingProduct, setPurchasingProduct] = useState<string | null>(null);
   const { user } = useAuth();
+  const { data: products, isLoading: loading, error } = useCreditProducts();
 
-  useEffect(() => {
-    loadCreditProducts();
-  }, []);
-
-  const loadCreditProducts = async () => {
-    try {
-      const productsData = await billingService.getCreditProducts();
-      setProducts(productsData);
-    } catch (error) {
-      console.error('Failed to load credit products:', error);
-      toast.error('Failed to load credit products');
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (error) {
+    toast.error(error.message);
+  }
 
   const handlePurchase = async (product: CreditProduct) => {
     if (!user) {
@@ -84,7 +72,7 @@ export function CreditPurchase({ organizationId, onCreditsPurchased }: CreditPur
   };
 
   const getBestValueProduct = () => {
-    if (products.length === 0) return null;
+    if (!products || products.length === 0) return null;
     
     // Find product with lowest cost per credit
     return products.reduce((best, current) => {
@@ -103,7 +91,7 @@ export function CreditPurchase({ organizationId, onCreditsPurchased }: CreditPur
     );
   }
 
-  if (products.length === 0) {
+  if (!products || products.length === 0) {
     return (
       <div className="text-center py-12">
         <Coins className="h-12 w-12 mx-auto text-muted-foreground mb-4" />

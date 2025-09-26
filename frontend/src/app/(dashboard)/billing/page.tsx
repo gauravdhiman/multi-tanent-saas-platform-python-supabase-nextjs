@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,10 +14,9 @@ import {
   Loader2,
   AlertTriangle
 } from 'lucide-react';
-import { billingService } from '@/services/billing-service';
 import { useAuth } from '@/contexts/auth-context';
 import { useOrganization } from '@/contexts/organization-context';
-import { OrganizationBillingSummary } from '@/types/billing';
+import { useBillingSummary } from '@/hooks/use-billing-summary';
 import { PlanSelection } from '@/components/billing/plan-selection';
 import { CreditPurchase } from '@/components/billing/credit-purchase';
 import { SubscriptionManagement } from '@/components/billing/subscription-management';
@@ -27,51 +26,17 @@ import { toast } from 'sonner';
 export default function BillingPage() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { currentOrganization, loading: orgLoading } = useOrganization();
-  const [billingSummary, setBillingSummary] = useState<OrganizationBillingSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { 
+    data: billingSummary,
+    isLoading: loading,
+    error: queryError,
+    refetch,
+    isRefetching
+  } = useBillingSummary();
+
   const [activeTab, setActiveTab] = useState<string>('overview');
 
-  const loadBillingData = useCallback(async () => {
-    if (!currentOrganization) {
-      setError('No organization selected');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const summary = await billingService.getBillingSummary(currentOrganization.id);
-      setBillingSummary(summary);
-    } catch (err: unknown) {
-      console.error('Error loading billing data:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      if (errorMessage.includes('Authentication required')) {
-        setError('Please sign in to access billing information');
-      } else if (errorMessage.includes('Access denied')) {
-        setError('You do not have permission to access billing information for this organization');
-      } else {
-        setError('Failed to load billing information. Please try again.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [currentOrganization]);
-
-  useEffect(() => {
-    if (isAuthenticated && !authLoading && !orgLoading && currentOrganization) {
-      loadBillingData();
-    } else if (!authLoading && !isAuthenticated) {
-      setLoading(false);
-      setError('Please sign in to access billing information');
-    } else if (!authLoading && !orgLoading && isAuthenticated && !currentOrganization) {
-      setLoading(false);
-      setError('No organization selected. Please select an organization to access billing information.');
-    }
-  }, [isAuthenticated, authLoading, orgLoading, currentOrganization, loadBillingData]);
+  const error = queryError ? (queryError instanceof Error ? queryError.message : 'Unknown error') : null;
 
   // Set initial tab based on subscription status
   useEffect(() => {
@@ -83,9 +48,7 @@ export default function BillingPage() {
   }, [billingSummary]);
 
   const refresh = async () => {
-    setRefreshing(true);
-    await loadBillingData();
-    setRefreshing(false);
+    await refetch();
     toast.success('Billing data refreshed');
   };
 
@@ -143,9 +106,9 @@ export default function BillingPage() {
           <Button 
             variant="outline" 
             onClick={refresh}
-            disabled={refreshing}
+            disabled={isRefetching}
           >
-            {refreshing ? (
+            {isRefetching ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             ) : (
               <RefreshCw className="w-4 h-4 mr-2" />
@@ -292,7 +255,7 @@ export default function BillingPage() {
             <PlanSelection 
               organizationId={currentOrganization.id}
               currentSubscription={billingSummary?.subscription}
-              onPlanSelected={() => loadBillingData()}
+              onPlanSelected={() => refetch()}
             />
           )}
         </TabsContent>
@@ -302,7 +265,7 @@ export default function BillingPage() {
           {currentOrganization && (
             <CreditPurchase 
               organizationId={currentOrganization.id}
-              onCreditsPurchased={() => loadBillingData()}
+              onCreditsPurchased={() => refetch()}
             />
           )}
         </TabsContent>
@@ -314,7 +277,7 @@ export default function BillingPage() {
               <SubscriptionManagement 
                 organizationId={currentOrganization.id}
                 subscription={billingSummary.subscription}
-                onSubscriptionUpdated={() => loadBillingData()}
+                onSubscriptionUpdated={() => refetch()}
               />
             )}
           </TabsContent>
