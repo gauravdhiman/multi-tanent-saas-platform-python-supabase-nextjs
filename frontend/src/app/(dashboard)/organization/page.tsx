@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { useOrganization } from '@/contexts/organization-context';
+import { useUserPermissions } from '@/hooks/use-user-permissions';
 import { AccessDenied } from '@/components/ui/access-denied';
 import { OrganizationEditDialog } from '@/components/organizations/organization-edit-dialog';
 import { Button } from '@/components/ui/button';
@@ -25,85 +25,14 @@ import type { UserRoleWithPermissions } from '@/types/user';
 export default function OrganizationPage() {
   const { user } = useAuth();
   const { currentOrganization, loading: orgLoading, error: orgError } = useOrganization();
-
-  const [userRoles, setUserRoles] = useState<UserRoleWithPermissions[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [userPermissions, setUserPermissions] = useState({
-    canUpdate: false,
-    canViewMembers: false,
-    isPlatformAdmin: false,
-    isOrgAdmin: false
-  });
+  const { canUpdateOrganization, canViewMembers, isPlatformAdmin, isOrgAdmin } = useUserPermissions();
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
-  const loadOrganizationData = useCallback (async () => {
-    if (!user || !currentOrganization) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Set user's roles from the auth context (already loaded)
-      if (user?.roles) {
-        // Filter roles for this organization
-        const orgRoles = user.roles
-          .filter(userRole => !userRole.organization_id || userRole.organization_id === currentOrganization.id)
-          .map(userRole => userRole.role);
-        setUserRoles(orgRoles);
-      }
-    } catch (err: unknown) {
-      const error = err as Error;
-      console.error('Error loading organization:', err);
-      setError(error.message || 'Failed to load organization');
-    } finally {
-      setLoading(false);
-    }
-  }, [user, currentOrganization]);
-
-  useEffect(() => {
-    if (!orgLoading && currentOrganization) {
-      loadOrganizationData();
-    } else if (!orgLoading && !currentOrganization) {
-      setLoading(false);
-      setError(orgError || 'No organization found');
-    }
-  }, [loadOrganizationData, currentOrganization, orgLoading, orgError]);
-
-  useEffect(() => {
-    const checkUserPermissions = () => {
-      if (!user || !currentOrganization) return;
-
-      try {
-        // Check permissions using the user profile from auth context
-        const isPlatformAdmin = user.hasRole('platform_admin');
-        const isOrgAdmin = user.hasRole('org_admin', currentOrganization.id);
-
-        // Grant permissions based on roles
-        const canUpdate = isPlatformAdmin || isOrgAdmin;
-        const canViewMembers = isPlatformAdmin || isOrgAdmin;
-
-        setUserPermissions({
-          canUpdate,
-          canViewMembers,
-          isPlatformAdmin,
-          isOrgAdmin
-        });
-      } catch (err) {
-        console.error('Error checking user permissions:', err);
-        // Fallback: provide basic permissions
-        setUserPermissions({
-          canUpdate: true,
-          canViewMembers: true,
-          isPlatformAdmin: false,
-          isOrgAdmin: false
-        });
-      }
-    };
-
-    checkUserPermissions();
-  }, [user, currentOrganization]);
+  const loadOrganizationData = useCallback(async () => {
+    // This function is now primarily for re-fetching data after an update.
+    // The initial data loading is handled by the hooks.
+  }, []);
 
   const handleEdit = () => {
     setEditDialogOpen(true);
@@ -114,7 +43,7 @@ export default function OrganizationPage() {
     loadOrganizationData();
   };
 
-  if (loading) {
+  if (orgLoading) {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center h-64">
@@ -124,8 +53,7 @@ export default function OrganizationPage() {
     );
   }
 
-
-  if (!userPermissions.isPlatformAdmin && !userPermissions.isOrgAdmin) {
+  if (!isPlatformAdmin && !isOrgAdmin) {
     return <AccessDenied 
       title="Access Denied"
       description="You do not have permission to view organization pages. Please contact your organization administrator or platform admin for access."
@@ -133,15 +61,19 @@ export default function OrganizationPage() {
     />;
   }
 
-  if (error || !currentOrganization) {
+  if (orgError || !currentOrganization) {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center h-64">
-          <div className="text-red-500">{error || 'Organization not found'}</div>
+          <div className="text-red-500">{orgError || 'Organization not found'}</div>
         </div>
       </div>
     );
   }
+
+  const userRoles = user?.roles
+    ?.filter(userRole => !userRole.organization_id || userRole.organization_id === currentOrganization.id)
+    .map(userRole => userRole.role) || [];
 
   return (
     <div className="p-6">
@@ -158,7 +90,7 @@ export default function OrganizationPage() {
             </div>
           </div>
 
-          {userPermissions.canUpdate && (
+          {canUpdateOrganization && (
             <div className="relative">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -172,7 +104,7 @@ export default function OrganizationPage() {
                     <Edit3 className="h-4 w-4" />
                     <span>Edit Organization</span>
                   </DropdownMenuItem>
-                  {userPermissions.canViewMembers && (
+                  {canViewMembers && (
                     <Link href="/organization/members">
                       <DropdownMenuItem className="flex items-center space-x-2">
                         <Users className="h-4 w-4" />
@@ -180,7 +112,7 @@ export default function OrganizationPage() {
                       </DropdownMenuItem>
                     </Link>
                   )}
-                  {userPermissions.canUpdate && (
+                  {canUpdateOrganization && (
                     <Link href="/organization/settings">
                       <DropdownMenuItem className="flex items-center space-x-2">
                         <Settings className="h-4 w-4" />
@@ -269,7 +201,7 @@ export default function OrganizationPage() {
               <CardContent>
                 {userRoles.length > 0 ? (
                   <div className="space-y-3">
-                    {userRoles.map((role) => (
+                    {(userRoles as UserRoleWithPermissions[]).map((role) => (
                       <div key={role.id} className="border rounded-lg p-3">
                         <div className="flex items-center justify-between mb-2">
                           <h4 className="font-medium text-foreground">{role.name}</h4>

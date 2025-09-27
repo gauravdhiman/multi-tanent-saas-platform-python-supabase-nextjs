@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Check, Loader2, Star, Zap, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
 import { billingService } from '@/services/billing-service';
-import { SubscriptionPlan, OrganizationSubscriptionWithPlan, CreditBalance } from '@/types/billing';
+import { SubscriptionPlan, OrganizationSubscriptionWithPlan } from '@/types/billing';
 import { useAuth } from '@/contexts/auth-context';
 import { toast } from 'sonner';
 import { getStripe } from '@/lib/stripe';

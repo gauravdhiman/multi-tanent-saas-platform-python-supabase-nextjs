@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/auth-context';
+import React, { useState } from 'react';
 import { useOrganization } from '@/contexts/organization-context';
+import { useUserPermissions } from '@/hooks/use-user-permissions';
 import { AccessDenied } from '@/components/ui/access-denied';
 import { OrganizationEditDialog } from '@/components/organizations/organization-edit-dialog';
 import { OrganizationDeleteDialog } from '@/components/organizations/organization-delete-dialog';
@@ -13,64 +13,23 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Settings as SettingsIcon, 
-  Save, 
-  Trash2, 
-  Shield, 
+import {
+  Settings as SettingsIcon,
+  Save,
+  Trash2,
+  Shield,
   Users,
   Bell,
   Key
 } from 'lucide-react';
-import type { Organization } from '@/types/organization';
 
 export default function OrganizationSettingsPage() {
-  const { user } = useAuth();
   const { currentOrganization, loading: orgLoading, error: orgError } = useOrganization();
-  const [userPermissions, setUserPermissions] = useState({
-    canUpdate: false,
-    canDelete: false,
-    canManageMembers: false,
-    isPlatformAdmin: false,
-    isOrgAdmin: false
-  });
+  const {canDeleteOrganization, canViewSettings} = useUserPermissions();
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (!user || !currentOrganization) return;
-
-    try {
-      // Check permissions using the user profile from auth context
-      const isPlatformAdmin = user.hasRole('platform_admin');
-      const isOrgAdmin = user.hasRole('org_admin', currentOrganization.id);
-
-      // Grant basic organization management permissions
-      const canUpdate = isPlatformAdmin || isOrgAdmin;
-      const canDelete = isPlatformAdmin; // Only platform admins can delete
-      const canManageMembers = isPlatformAdmin || isOrgAdmin;
-
-      setUserPermissions({
-        canUpdate,
-        canDelete,
-        canManageMembers,
-        isPlatformAdmin,
-        isOrgAdmin
-      });
-    } catch (err) {
-      console.error('Error checking user permissions:', err);
-      // Fallback: provide basic permissions
-      setUserPermissions({
-        canUpdate: true,
-        canDelete: false,
-        canManageMembers: true,
-        isPlatformAdmin: false,
-        isOrgAdmin: false
-      });
-    }
-  }, [user, currentOrganization]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -104,8 +63,8 @@ export default function OrganizationSettingsPage() {
     );
   }
 
-  if (!userPermissions.canUpdate) {
-    return <AccessDenied 
+  if (!canViewSettings) {
+    return <AccessDenied
       title="Access Denied"
       description="You do not have permission to view organization settings. Only platform admins and organization admins can access this page."
       redirectPath="/dashboard"
@@ -133,7 +92,7 @@ export default function OrganizationSettingsPage() {
           <TabsTrigger value="members">Members</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          {userPermissions.canDelete && <TabsTrigger value="danger">Danger Zone</TabsTrigger>}
+          {canDeleteOrganization && <TabsTrigger value="danger">Danger Zone</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
@@ -392,7 +351,7 @@ Example: "Founded in 2020, we're a 25-person software company based in San Franc
           </Card>
         </TabsContent>
 
-        {userPermissions.canDelete && (
+        {canDeleteOrganization && (
           <TabsContent value="danger" className="space-y-6">
             <Card className="border-red-200">
               <CardHeader>

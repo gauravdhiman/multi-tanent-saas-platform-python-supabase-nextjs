@@ -1,200 +1,47 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
+import { useSubscriptionPlans } from '@/hooks/use-subscription-plans';
 import { Button } from '@/components/ui/button';
-import { billingService } from '@/services/billing-service';
-import type { SubscriptionPlan } from '@/types/billing';
 
 export default function HomePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [pricingPlans, setPricingPlans] = useState<SubscriptionPlan[]>([]);
-  const [isLoadingPricing, setIsLoadingPricing] = useState(true);
+  const { data: pricingPlans = [], isLoading: isLoadingPricing } = useSubscriptionPlans();
   const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('monthly');
-  
+
   // Calculate average savings percentage across all plan tiers
   const calculateAverageSavings = () => {
     if (pricingPlans.length === 0) return 0; // fallback to 0%
-    
+
     const monthlyPlans = pricingPlans.filter(p => p.interval === 'monthly');
     const annualPlans = pricingPlans.filter(p => p.interval === 'annual');
-    
+
     let totalSavings = 0;
     let savingsCount = 0;
-    
+
     for (const monthlyPlan of monthlyPlans) {
       // Find the corresponding annual plan (same name)
-      const annualPlan = annualPlans.find(ap => 
-        ap.name === monthlyPlan.name && 
+      const annualPlan = annualPlans.find(ap =>
+        ap.name === monthlyPlan.name &&
         ap.currency === monthlyPlan.currency
       );
-      
+
       if (annualPlan) {
         const monthlyTotal = monthlyPlan.price_amount * 12;
         const annualTotal = annualPlan.price_amount;
         const savings = monthlyTotal - annualTotal;
         const savingsPercentage = (savings / monthlyTotal) * 100;
-        
+
         totalSavings += savingsPercentage;
         savingsCount++;
       }
     }
-    
+
     return savingsCount > 0 ? Math.round(totalSavings / savingsCount) : 20;
   };
-
-  // Fetch pricing plans on component mount
-  useEffect(() => {
-    const fetchPricingPlans = async () => {
-      try {
-        const plans = await billingService.getSubscriptionPlans();
-        setPricingPlans(plans);
-      } catch (error) {
-        console.error('Error fetching pricing plans:', error);
-        // Use mock data if API call fails
-        setPricingPlans([
-          {
-            id: '1',
-            name: 'Starter',
-            description: 'Perfect for small teams getting started',
-            price_amount: 2900,
-            currency: 'USD',
-            interval: 'monthly',
-            interval_count: 1,
-            included_credits: 1000,
-            max_users: 5,
-            features: {
-              ai_features: ['Basic AI Processing', 'Limited API Access'],
-              support: 'Email Support',
-              storage: '10GB'
-            },
-            is_active: true,
-            stripe_price_id: 'price_starter',
-            stripe_product_id: 'prod_starter',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            trial_period_days: 14
-          },
-          {
-            id: '4',
-            name: 'Starter',
-            description: 'Perfect for small teams getting started (Annual)',
-            price_amount: 27900, // 2325 per month when annual
-            currency: 'USD',
-            interval: 'annual',
-            interval_count: 1,
-            included_credits: 1000,
-            max_users: 5,
-            features: {
-              ai_features: ['Basic AI Processing', 'Limited API Access'],
-              support: 'Email Support',
-              storage: '10GB'
-            },
-            is_active: true,
-            stripe_price_id: 'price_starter_annual',
-            stripe_product_id: 'prod_starter',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            trial_period_days: 14
-          },
-          {
-            id: '2',
-            name: 'Professional',
-            description: 'For growing businesses with more complex needs',
-            price_amount: 7900,
-            currency: 'USD',
-            interval: 'monthly',
-            interval_count: 1,
-            included_credits: 5000,
-            max_users: null,
-            features: {
-              ai_features: ['Advanced AI Processing', 'Priority API Access', 'Custom AI Models'],
-              support: 'Priority Email & Chat Support',
-              storage: '100GB'
-            },
-            is_active: true,
-            stripe_price_id: 'price_professional',
-            stripe_product_id: 'prod_professional',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            trial_period_days: 14
-          },
-          {
-            id: '5',
-            name: 'Professional',
-            description: 'For growing businesses with more complex needs (Annual)',
-            price_amount: 75900, // 6325 per month when annual
-            currency: 'USD',
-            interval: 'annual',
-            interval_count: 1,
-            included_credits: 5000,
-            max_users: null,
-            features: {
-              ai_features: ['Advanced AI Processing', 'Priority API Access', 'Custom AI Models'],
-              support: 'Priority Email & Chat Support',
-              storage: '100GB'
-            },
-            is_active: true,
-            stripe_price_id: 'price_professional_annual',
-            stripe_product_id: 'prod_professional',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            trial_period_days: 14
-          },
-          {
-            id: '3',
-            name: 'Enterprise',
-            description: 'For large organizations with custom requirements',
-            price_amount: 19900,
-            currency: 'USD',
-            interval: 'monthly',
-            interval_count: 1,
-            included_credits: 20000,
-            max_users: null,
-            features: {
-              ai_features: ['Unlimited AI Processing', 'Custom AI Models', 'Dedicated API Access', 'White Label'],
-              support: '24/7 Dedicated Support',
-              storage: 'Unlimited'
-            },
-            is_active: true,
-            stripe_price_id: 'price_enterprise',
-            stripe_product_id: 'prod_enterprise',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            trial_period_days: 14
-          },
-          {
-            id: '6',
-            name: 'Enterprise',
-            description: 'For large organizations with custom requirements (Annual)',
-            price_amount: 190900, // 15908 per month when annual
-            currency: 'USD',
-            interval: 'annual',
-            interval_count: 1,
-            included_credits: 20000,
-            max_users: null,
-            features: {
-              ai_features: ['Unlimited AI Processing', 'Custom AI Models', 'Dedicated API Access', 'White Label'],
-              support: '24/7 Dedicated Support',
-              storage: 'Unlimited'
-            },
-            is_active: true,
-            stripe_price_id: 'price_enterprise_annual',
-            stripe_product_id: 'prod_enterprise',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            trial_period_days: 14
-          }
-        ]);
-      } finally {
-        setIsLoadingPricing(false);
-      }
-    };
-
-    fetchPricingPlans();
-  }, []);
 
   // Show loading state while checking auth status
   if (loading) {

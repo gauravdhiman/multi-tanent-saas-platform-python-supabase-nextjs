@@ -3,15 +3,13 @@
  */
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Plus, Building2, Users, Settings, Trash2, Edit3, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useAuth } from '@/contexts/auth-context';
 import { useOrganization } from '@/contexts/organization-context';
-import { organizationService } from '@/services/organization-service';
-import { rbacService } from '@/services/rbac-service';
+import { useUserPermissions } from '@/hooks/use-user-permissions';
 import { isDummyOrganization } from '@/lib/organization-utils';
 import { OrganizationCreateDialog } from '@/components/organizations/organization-create-dialog';
 import { OrganizationEditDialog } from '@/components/organizations/organization-edit-dialog';
@@ -20,14 +18,8 @@ import Link from 'next/link';
 import type { Organization } from '@/types/organization';
 
 export default function OrganizationsPage() {
-  const { user } = useAuth();
   const { organizations, loading: orgLoading, error: orgError } = useOrganization();
-  const [userPermissions, setUserPermissions] = useState({
-    canCreate: false,
-    canUpdate: false,
-    canDelete: false,
-    isPlatformAdmin: false
-  });
+  const { isPlatformAdmin, canUpdateOrganization, canDeleteOrganization } = useUserPermissions();
 
   // Dialog states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -35,41 +27,20 @@ export default function OrganizationsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null);
 
-  useEffect(() => {
-    if (!user) return;
-
-    try {
-      // Check permissions using the user profile from auth context
-      const isPlatformAdmin = user.hasRole('platform_admin');
-      const canCreate = isPlatformAdmin || user.hasPermission('organization:create');
-      const canUpdate = isPlatformAdmin || user.hasPermission('organization:update');
-      const canDelete = isPlatformAdmin || user.hasPermission('organization:delete');
-
-      setUserPermissions({
-        canCreate,
-        canUpdate,
-        canDelete,
-        isPlatformAdmin
-      });
-    } catch (error) {
-      console.error('Error checking permissions:', error);
-    }
-  }, [user]);
-
   const { refreshOrganizations } = useOrganization();
 
-  const handleCreateSuccess = (newOrg: Organization) => {
+  const handleCreateSuccess = () => {
     refreshOrganizations();
     setCreateDialogOpen(false);
   };
 
-  const handleEditSuccess = (updatedOrg: Organization) => {
+  const handleEditSuccess = () => {
     refreshOrganizations();
     setEditDialogOpen(false);
     setSelectedOrganization(null);
   };
 
-  const handleDeleteSuccess = (deletedOrgId: string) => {
+  const handleDeleteSuccess = () => {
     refreshOrganizations();
     setDeleteDialogOpen(false);
     setSelectedOrganization(null);
@@ -83,17 +54,6 @@ export default function OrganizationsPage() {
   const openDeleteDialog = (org: Organization) => {
     setSelectedOrganization(org);
     setDeleteDialogOpen(true);
-  };
-
-  const canEditOrganization = () => {
-    if (userPermissions.isPlatformAdmin) return true;
-    // Org admins can edit their own organization
-    return userPermissions.canUpdate;
-  };
-
-  const canDeleteOrganization = () => {
-    // Only platform admins can delete organizations
-    return userPermissions.isPlatformAdmin && userPermissions.canDelete;
   };
 
   if (orgLoading) {
@@ -129,7 +89,7 @@ export default function OrganizationsPage() {
             Manage your organizations and their settings
           </p>
         </div>
-        {userPermissions.canCreate && (
+        {isPlatformAdmin && (
           <Button onClick={() => setCreateDialogOpen(true)} className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
             Create Organization
@@ -146,7 +106,7 @@ export default function OrganizationsPage() {
               <p className="text-gray-600 mb-6">
                 You don&apos;t have access to any organizations yet.
               </p>
-              {userPermissions.canCreate && (
+              {isPlatformAdmin && (
                 <Button onClick={() => setCreateDialogOpen(true)}>
                   Create Your First Organization
                 </Button>
@@ -179,12 +139,12 @@ export default function OrganizationsPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => openEditDialog(org)}
-                      disabled={!canEditOrganization()}
+                      disabled={!canUpdateOrganization}
                       className="h-8 w-8 p-0"
                     >
                       <Edit3 className="h-4 w-4" />
                     </Button>
-                    {canDeleteOrganization() && (
+                    {canDeleteOrganization && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -240,7 +200,7 @@ export default function OrganizationsPage() {
                       Members
                     </Link>
                   </Button>
-                  {canEditOrganization() && (
+                  {canUpdateOrganization && (
                     <Button
                       variant="outline"
                       size="sm"
