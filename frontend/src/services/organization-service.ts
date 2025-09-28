@@ -228,7 +228,13 @@ class OrganizationService {
     });
   }
 
-  // Get organization members
+  // Get organization by ID
+  async getOrganizationById(orgId: string): Promise<Organization> {
+    const response = await this.fetchWithAuth(`/organizations/${orgId}`);
+    return response.json();
+  }
+
+ // Get organization members
   async getOrganizationMembers(orgId: string): Promise<Member[]> {
     const response = await this.fetchWithAuth(`/organizations/${orgId}/members`);
     return response.json();

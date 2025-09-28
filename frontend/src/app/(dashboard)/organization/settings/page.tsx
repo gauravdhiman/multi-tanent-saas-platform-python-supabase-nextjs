@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useOrganization } from '@/contexts/organization-context';
 import { useUserPermissions } from '@/hooks/use-user-permissions';
+import { useOrganizationById } from '@/hooks/use-organization-by-id';
 import { AccessDenied } from '@/components/ui/access-denied';
 import { OrganizationEditDialog } from '@/components/organizations/organization-edit-dialog';
 import { OrganizationDeleteDialog } from '@/components/organizations/organization-delete-dialog';
@@ -15,45 +16,74 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Settings as SettingsIcon,
-  Save,
+ Save,
   Trash2,
   Shield,
   Users,
   Bell,
   Key
 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 
 export default function OrganizationSettingsPage() {
-  const { currentOrganization, loading: orgLoading, error: orgError } = useOrganization();
+  const { currentOrganization, loading: orgLoading, error: orgError, setCurrentOrganization } = useOrganization();
   const {canDeleteOrganization, canViewSettings} = useUserPermissions();
+  const searchParams = useSearchParams();
+  const orgId = searchParams.get('orgId');
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const handleSave = async () => {
+  // Validate organization access when orgId is provided
+  const { isValid: isOrgValid, loading: validationLoading, organization: validatedOrg } = useOrganizationById(orgId);
+
+  // Set the current organization based on the validated orgId parameter if provided
+  if (validatedOrg && (!currentOrganization || currentOrganization.id !== validatedOrg.id)) {
+    setCurrentOrganization(validatedOrg);
+  }
+
+  // Make orgId mandatory - if not provided, redirect to organizations page
+ if (!orgId) {
+    return <AccessDenied 
+      title="Organization ID Required"
+      description="Organization ID is required to access this page. Please select an organization from the organizations page."
+      redirectPath="/organizations"
+    />;
+  }
+
+ const handleSave = async () => {
     setSaving(true);
     // Simulate save operation
     await new Promise(resolve => setTimeout(resolve, 1000));
     setSaving(false);
-  };
+ };
 
   const handleEditSuccess = () => {
     setEditDialogOpen(false);
     // Organization context will automatically update
   };
 
-  if (orgLoading) {
+  if (orgLoading || validationLoading) {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center h-64">
-          <div className="text-gray-500">Loading settings...</div>
+          <div className="text-gray-50">Loading settings...</div>
         </div>
       </div>
     );
   }
 
-  if (orgError || !currentOrganization) {
+  // Check if orgId is invalid (provided but validation failed)
+  if (!isOrgValid) {
+    return <AccessDenied 
+      title="Access Denied"
+      description="You do not have permission to access this organization. Please contact your organization administrator or platform admin for access."
+      redirectPath="/organizations"
+    />;
+  }
+
+  if (orgError || !validatedOrg) {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center h-64">
@@ -63,7 +93,7 @@ export default function OrganizationSettingsPage() {
     );
   }
 
-  if (!canViewSettings) {
+ if (!canViewSettings) {
     return <AccessDenied
       title="Access Denied"
       description="You do not have permission to view organization settings. Only platform admins and organization admins can access this page."
@@ -109,7 +139,7 @@ export default function OrganizationSettingsPage() {
                   <Label htmlFor="orgName">Organization Name</Label>
                   <Input
                     id="orgName"
-                    defaultValue={currentOrganization.name}
+                    defaultValue={validatedOrg.name}
                     placeholder="Enter organization name"
                   />
                 </div>
@@ -117,7 +147,7 @@ export default function OrganizationSettingsPage() {
                   <Label htmlFor="orgSlug">Slug</Label>
                   <Input
                     id="orgSlug"
-                    defaultValue={currentOrganization.slug}
+                    defaultValue={validatedOrg.slug}
                     placeholder="organization-slug"
                   />
                   <p className="text-xs text-muted-foreground">Used in URLs and API calls</p>
@@ -129,7 +159,7 @@ export default function OrganizationSettingsPage() {
                 <Input 
                   id="orgWebsite" 
                   type="url"
-                  defaultValue={currentOrganization.website || ''}
+                  defaultValue={validatedOrg.website || ''}
                   placeholder="https://www.example.com"
                 />
                 <p className="text-xs text-muted-foreground">Your organization&apos;s official website URL</p>
@@ -139,7 +169,7 @@ export default function OrganizationSettingsPage() {
                 <Label htmlFor="orgDescription">Description</Label>
                 <Textarea 
                   id="orgDescription" 
-                  defaultValue={currentOrganization.description || ''}
+                  defaultValue={validatedOrg.description || ''}
                   placeholder={`Tell us about your organization! Consider including:
 
 • When your organization was founded
@@ -166,7 +196,7 @@ Example: "Founded in 2020, we're a 25-person software company based in San Franc
                   <input 
                     type="checkbox" 
                     id="isActive" 
-                    defaultChecked={currentOrganization.is_active}
+                    defaultChecked={validatedOrg.is_active}
                     className="rounded"
                   />
                   <label htmlFor="isActive" className="text-sm">Organization is active</label>
@@ -355,7 +385,7 @@ Example: "Founded in 2020, we're a 25-person software company based in San Franc
           <TabsContent value="danger" className="space-y-6">
             <Card className="border-red-200">
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2 text-red-600">
+                <CardTitle className="flex items-center space-x-2 text-red-60">
                   <Trash2 className="h-5 w-5" />
                   <span>Danger Zone</span>
                 </CardTitle>
@@ -384,21 +414,21 @@ Example: "Founded in 2020, we're a 25-person software company based in San Franc
       </Tabs>
 
       {/* Edit Dialog */}
-      {currentOrganization && (
+      {validatedOrg && (
         <OrganizationEditDialog
           open={editDialogOpen}
           onOpenChange={setEditDialogOpen}
-          organization={currentOrganization}
+          organization={validatedOrg}
           onSuccess={handleEditSuccess}
         />
       )}
 
       {/* Delete Dialog */}
-      {currentOrganization && (
+      {validatedOrg && (
         <OrganizationDeleteDialog
           open={deleteDialogOpen}
           onOpenChange={setDeleteDialogOpen}
-          organization={currentOrganization}
+          organization={validatedOrg}
           onSuccess={() => {
             setDeleteDialogOpen(false);
             // Redirect or handle successful deletion

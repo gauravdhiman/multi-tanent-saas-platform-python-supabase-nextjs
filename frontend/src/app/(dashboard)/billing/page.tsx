@@ -22,21 +22,44 @@ import { CreditPurchase } from '@/components/billing/credit-purchase';
 import { SubscriptionManagement } from '@/components/billing/subscription-management';
 import { OrganizationSelector } from '@/components/organizations/organization-selector';
 import { toast } from 'sonner';
+import { useSearchParams } from 'next/navigation';
+import { useOrganizationById } from '@/hooks/use-organization-by-id';
+import { AccessDenied } from '@/components/ui/access-denied';
 
 export default function BillingPage() {
   const { loading: authLoading } = useAuth();
-  const { currentOrganization, loading: orgLoading } = useOrganization();
+ const { currentOrganization, loading: orgLoading, setCurrentOrganization } = useOrganization();
+  const searchParams = useSearchParams();
+  const orgId = searchParams.get('orgId');
+
+  // Validate organization access when orgId is provided
+  const { isValid: isOrgValid, loading: validationLoading, organization: validatedOrg } = useOrganizationById(orgId);
+
+  // Set the current organization based on the validated orgId parameter if provided
+  if (validatedOrg && (!currentOrganization || currentOrganization.id !== validatedOrg.id)) {
+    setCurrentOrganization(validatedOrg);
+  }
+
   const { 
     data: billingSummary,
     isLoading: loading,
     error: queryError,
     refetch,
     isRefetching
-  } = useBillingSummary();
+  } = useBillingSummary(orgId || undefined);
 
   const [userSelectedTab, setUserSelectedTab] = useState<string | null>(null);
 
   const error = queryError ? (queryError instanceof Error ? queryError.message : 'Unknown error') : null;
+
+  // Make orgId mandatory - if not provided, redirect to organizations page
+ if (!orgId) {
+    return <AccessDenied 
+      title="Organization ID Required"
+      description="Organization ID is required to access this page. Please select an organization from the organizations page."
+      redirectPath="/organizations"
+    />;
+  }
 
   const hasActiveSubscription = billingSummary?.subscription && 
     ['active', 'trial'].includes(billingSummary.subscription.status);
@@ -67,7 +90,7 @@ export default function BillingPage() {
     });
   };
 
-  if (authLoading || orgLoading || loading) {
+  if (authLoading || orgLoading || validationLoading || loading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center py-12">
@@ -76,6 +99,15 @@ export default function BillingPage() {
         </div>
       </div>
     );
+  }
+
+  // Check if orgId is invalid (provided but validation failed)
+  if (!isOrgValid) {
+    return <AccessDenied 
+      title="Access Denied"
+      description="You do not have permission to access this organization. Please contact your organization administrator or platform admin for access."
+      redirectPath="/organizations"
+    />;
   }
 
   if (error) {
@@ -114,10 +146,10 @@ export default function BillingPage() {
           </Button>
         </div>
         
-        {/* Organization Selector */}
+        {/* Organization Info */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>Organization:</span>
-          <OrganizationSelector />
+          <span className="font-medium">{validatedOrg?.name}</span>
         </div>
       </div>
 
@@ -248,9 +280,9 @@ export default function BillingPage() {
 
         {/* Plans Tab */}
         <TabsContent value="plans" className="space-y-6">
-          {currentOrganization && (
+          {validatedOrg && (
             <PlanSelection 
-              organizationId={currentOrganization.id}
+              organizationId={validatedOrg.id}
               currentSubscription={billingSummary?.subscription}
               onPlanSelected={() => refetch()}
             />
@@ -259,9 +291,9 @@ export default function BillingPage() {
 
         {/* Credits Tab */}
         <TabsContent value="credits" className="space-y-6">
-          {currentOrganization && (
+          {validatedOrg && (
             <CreditPurchase 
-              organizationId={currentOrganization.id}
+              organizationId={validatedOrg.id}
               onCreditsPurchased={() => refetch()}
             />
           )}
@@ -270,9 +302,9 @@ export default function BillingPage() {
         {/* Manage Tab */}
         {hasActiveSubscription && (
           <TabsContent value="manage" className="space-y-6">
-            {billingSummary?.subscription && currentOrganization && (
+            {billingSummary?.subscription && validatedOrg && (
               <SubscriptionManagement 
-                organizationId={currentOrganization.id}
+                organizationId={validatedOrg.id}
                 subscription={billingSummary.subscription}
                 onSubscriptionUpdated={() => refetch()}
               />

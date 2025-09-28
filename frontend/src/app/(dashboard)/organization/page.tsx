@@ -4,6 +4,7 @@ import React, { useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { useOrganization } from '@/contexts/organization-context';
 import { useUserPermissions } from '@/hooks/use-user-permissions';
+import { useOrganizationById } from '@/hooks/use-organization-by-id';
 import { AccessDenied } from '@/components/ui/access-denied';
 import { OrganizationEditDialog } from '@/components/organizations/organization-edit-dialog';
 import { Button } from '@/components/ui/button';
@@ -17,15 +18,19 @@ import {
   Edit3,
   Shield,
   Activity,
+  CreditCard,
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import type { UserRoleWithPermissions } from '@/types/user';
 
 export default function OrganizationPage() {
   const { user } = useAuth();
-  const { currentOrganization, loading: orgLoading, error: orgError } = useOrganization();
+  const { currentOrganization, loading: orgLoading, setCurrentOrganization } = useOrganization();
   const { canUpdateOrganization, canViewMembers, isPlatformAdmin, isOrgAdmin } = useUserPermissions();
+  const searchParams = useSearchParams();
+  const orgId = searchParams.get('orgId');
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
@@ -33,6 +38,14 @@ export default function OrganizationPage() {
     // This function is now primarily for re-fetching data after an update.
     // The initial data loading is handled by the hooks.
   }, []);
+
+  // Validate organization access when orgId is provided
+  const { isValid: isOrgValid, loading: validationLoading, organization: validatedOrg } = useOrganizationById(orgId);
+
+  // Set the current organization based on the validated orgId parameter if provided
+  if (validatedOrg && (!currentOrganization || currentOrganization.id !== validatedOrg.id)) {
+    setCurrentOrganization(validatedOrg);
+ }
 
   const handleEdit = () => {
     setEditDialogOpen(true);
@@ -43,14 +56,32 @@ export default function OrganizationPage() {
     loadOrganizationData();
   };
 
-  if (orgLoading) {
+  // Make orgId mandatory - if not provided, redirect to organizations page
+ if (!orgId) {
+    return <AccessDenied 
+      title="Organization ID Required"
+      description="Organization ID is required to access this page. Please select an organization from the organizations page."
+      redirectPath="/organizations"
+    />;
+  }
+
+ if (orgLoading || validationLoading) {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center h-64">
-          <div className="text-gray-500">Loading organization...</div>
+          <div className="text-gray-50">Loading organization...</div>
         </div>
       </div>
     );
+  }
+
+  // Check if orgId is invalid (provided but validation failed)
+  if (!isOrgValid) {
+    return <AccessDenied 
+      title="Access Denied"
+      description="You do not have permission to access this organization. Please contact your organization administrator or platform admin for access."
+      redirectPath="/organizations"
+    />;
   }
 
   if (!isPlatformAdmin && !isOrgAdmin) {
@@ -61,18 +92,18 @@ export default function OrganizationPage() {
     />;
   }
 
-  if (orgError || !currentOrganization) {
+  if (!validatedOrg) {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center h-64">
-          <div className="text-red-500">{orgError || 'Organization not found'}</div>
+          <div className="text-red-50">Organization not found</div>
         </div>
       </div>
     );
   }
 
   const userRoles = user?.roles
-    ?.filter(userRole => !userRole.organization_id || userRole.organization_id === currentOrganization.id)
+    ?.filter(userRole => !userRole.organization_id || userRole.organization_id === validatedOrg.id)
     .map(userRole => userRole.role) || [];
 
   return (
@@ -85,7 +116,7 @@ export default function OrganizationPage() {
               <Building2 className="h-8 w-8 text-primary" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-foreground">{currentOrganization.name}</h1>
+              <h1 className="text-3xl font-bold text-foreground">{validatedOrg.name}</h1>
               <p className="text-muted-foreground">Organization Details</p>
             </div>
           </div>
@@ -105,7 +136,7 @@ export default function OrganizationPage() {
                     <span>Edit Organization</span>
                   </DropdownMenuItem>
                   {canViewMembers && (
-                    <Link href="/organization/members">
+                    <Link href={`/organization/members?orgId=${validatedOrg.id}`}>
                       <DropdownMenuItem className="flex items-center space-x-2">
                         <Users className="h-4 w-4" />
                         <span>Manage Members</span>
@@ -113,13 +144,19 @@ export default function OrganizationPage() {
                     </Link>
                   )}
                   {canUpdateOrganization && (
-                    <Link href="/organization/settings">
+                    <Link href={`/organization/settings?orgId=${validatedOrg.id}`}>
                       <DropdownMenuItem className="flex items-center space-x-2">
                         <Settings className="h-4 w-4" />
                         <span>Organization Settings</span>
                       </DropdownMenuItem>
                     </Link>
                   )}
+                  <Link href={`/billing?orgId=${validatedOrg.id}`}>
+                    <DropdownMenuItem className="flex items-center space-x-2">
+                      <CreditCard className="h-4 w-4" />
+                      <span>Billing & Subscriptions</span>
+                    </DropdownMenuItem>
+                  </Link>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -127,12 +164,12 @@ export default function OrganizationPage() {
         </div>
 
         <div className="flex items-center space-x-4">
-          <Badge variant={currentOrganization.is_active ? "default" : "secondary"}>
-            {currentOrganization.is_active ? 'Active' : 'Inactive'}
+          <Badge variant={validatedOrg.is_active ? "default" : "secondary"}>
+            {validatedOrg.is_active ? 'Active' : 'Inactive'}
           </Badge>
           <span className="text-muted-foreground flex items-center">
             <Calendar className="h-4 w-4 mr-1" />
-            Created {new Date(currentOrganization.created_at).toLocaleDateString()}
+            Created {new Date(validatedOrg.created_at).toLocaleDateString()}
           </span>
         </div>
       </div>
@@ -151,22 +188,22 @@ export default function OrganizationPage() {
               <CardContent className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Name</label>
-                  <p className="text-foreground">{currentOrganization.name}</p>
+                  <p className="text-foreground">{validatedOrg.name}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Description</label>
-                  <p className="text-foreground">{currentOrganization.description || 'No description'}</p>
+                  <p className="text-foreground">{validatedOrg.description || 'No description'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Website</label>
-                  {currentOrganization.website ? (
+                  {validatedOrg.website ? (
                     <a
-                      href={currentOrganization.website}
+                      href={validatedOrg.website}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary hover:text-primary/80 underline"
                     >
-                      {currentOrganization.website}
+                      {validatedOrg.website}
                     </a>
                   ) : (
                     <p className="text-muted-foreground">No website</p>
@@ -174,13 +211,13 @@ export default function OrganizationPage() {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Slug</label>
-                  <p className="text-foreground font-mono">{currentOrganization.slug}</p>
+                  <p className="text-foreground font-mono">{validatedOrg.slug}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Status</label>
                   <div className="flex items-center space-x-2">
-                    <Badge variant={currentOrganization.is_active ? "default" : "secondary"}>
-                      {currentOrganization.is_active ? 'Active' : 'Inactive'}
+                    <Badge variant={validatedOrg.is_active ? "default" : "secondary"}>
+                      {validatedOrg.is_active ? 'Active' : 'Inactive'}
                     </Badge>
                   </div>
                 </div>
@@ -225,11 +262,11 @@ export default function OrganizationPage() {
       </div>
 
       {/* Edit Dialog */}
-      {currentOrganization && (
+      {validatedOrg && (
         <OrganizationEditDialog
           open={editDialogOpen}
           onOpenChange={setEditDialogOpen}
-          organization={currentOrganization}
+          organization={validatedOrg}
           onSuccess={handleEditSuccess}
         />
       )}

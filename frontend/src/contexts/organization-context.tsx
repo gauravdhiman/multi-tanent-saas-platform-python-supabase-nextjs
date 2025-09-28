@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { Organization } from '@/types/organization';
 import { useAuth } from '@/contexts/auth-context';
-import { useUserOrganizations } from '@/hooks/use-organizations';
+import { useUserOrganizations } from '@/hooks/use-user-organizations';
 
 interface OrganizationContextType {
   organizations: Organization[];

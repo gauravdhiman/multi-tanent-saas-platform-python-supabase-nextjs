@@ -26,7 +26,23 @@ const queryClient = new QueryClient({
   },
 });
 
+// This code is TanStack Query DevTool for debugging purposes
+declare global {
+  interface Window {
+    __TANSTACK_QUERY_CLIENT__:
+      import("@tanstack/query-core").QueryClient;
+  }
+}
+
 export function Providers({ children }: ProvidersProps) {
+  React.useEffect(() => {
+    // This code runs only in the browser after component mounts
+    // Only enable TanStack Query debugging in development mode - useful for debugging
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      window.__TANSTACK_QUERY_CLIENT__ = queryClient;
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>

@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
 import { useOrganization } from '@/contexts/organization-context';
+import { useSearchParams } from 'next/navigation';
 import { useOrganizationMembers } from '@/hooks/use-organization-members';
 import { useUserPermissions } from '@/hooks/use-user-permissions';
+import { useOrganizationById } from '@/hooks/use-organization-by-id';
 import { AccessDenied } from '@/components/ui/access-denied';
 import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
@@ -17,9 +18,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import type { Organization } from '@/types/organization';
 
-function MembersPageContent() {
-  const { currentOrganization } = useOrganization();
+function MembersPageContent({ validatedOrg }: { validatedOrg: Organization | null }) {
   const { data: members = [], isLoading, error, refetch } = useOrganizationMembers();
   const userPermissions = useUserPermissions();
 
@@ -38,7 +39,7 @@ function MembersPageContent() {
     );
   }
 
-  if (!userPermissions.canViewMembers) {
+ if (!userPermissions.canViewMembers) {
     return <AccessDenied 
       title="Access Denied"
       description="You do not have permission to view organization members. Only platform admins and organization admins can access this page."
@@ -52,11 +53,11 @@ function MembersPageContent() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-4">
-            <div className="bg-blue-100 p-3 rounded-lg">
+            <div className="bg-blue-10 p-3 rounded-lg">
               <Users className="h-8 w-8 text-blue-600" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-foreground">{currentOrganization?.name || 'Organization'} Members</h1>
+              <h1 className="text-3xl font-bold text-foreground">{validatedOrg?.name || 'Organization'} Members</h1>
               <p className="text-muted-foreground">Manage organization members and their roles</p>
             </div>
           </div>
@@ -90,7 +91,7 @@ function MembersPageContent() {
             <div className="text-2xl font-bold text-green-600">
               {members.filter(m => m.is_verified).length}
             </div>
-            <p className="text-xs text-gray-500">Verified accounts</p>
+            <p className="text-xs text-gray-50">Verified accounts</p>
           </CardContent>
         </Card>
 
@@ -99,7 +100,7 @@ function MembersPageContent() {
             <CardTitle className="text-sm font-medium text-gray-600">Administrators</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
+            <div className="text-2xl font-bold text-blue-60">
               {members.filter(m => m.roles.some(r => r.name.includes('admin'))).length}
             </div>
             <p className="text-xs text-gray-500">Admin roles</p>
@@ -150,7 +151,7 @@ function MembersPageContent() {
                           {member.first_name?.[0]}{member.last_name?.[0]}
                         </div>
                         <div>
-                          <div className="font-medium text-gray-900">
+                          <div className="font-medium text-gray-90">
                             {member.first_name} {member.last_name}
                           </div>
                           <div className="text-sm text-gray-500">{member.email}</div>
@@ -214,14 +215,42 @@ function MembersPageContent() {
 }
 
 export default function OrganizationMembersPage() {
-  const { loading: orgLoading, error: orgError, currentOrganization } = useOrganization();
+  const { loading: orgLoading, error: orgError, currentOrganization, setCurrentOrganization } = useOrganization();
+  const searchParams = useSearchParams();
+  const orgId = searchParams.get('orgId');
+
+  // Validate organization access when orgId is provided
+  const { isValid: isOrgValid, loading: validationLoading, organization: validatedOrg } = useOrganizationById(orgId);
+
+  // Set the current organization based on the validated orgId parameter if provided
+  if (validatedOrg && (!currentOrganization || currentOrganization.id !== validatedOrg.id)) {
+    setCurrentOrganization(validatedOrg);
+  }
+
+  // Make orgId mandatory - if not provided, redirect to organizations page
+ if (!orgId) {
+    return <AccessDenied 
+      title="Organization ID Required"
+      description="Organization ID is required to access this page. Please select an organization from the organizations page."
+      redirectPath="/organizations"
+    />;
+  }
 
   // Handle organization loading states at the top level
-  if (orgLoading) {
+  if (orgLoading || validationLoading) {
     return <LoadingState message="Loading organization..." />;
   }
 
-  if (orgError || !currentOrganization) {
+  // Check if orgId is invalid (provided but validation failed)
+  if (!isOrgValid) {
+    return <AccessDenied 
+      title="Access Denied"
+      description="You do not have permission to access this organization. Please contact your organization administrator or platform admin for access."
+      redirectPath="/organizations"
+    />;
+  }
+
+  if (orgError || !validatedOrg) {
     return (
       <ErrorState
         title="Organization not found"
@@ -232,5 +261,5 @@ export default function OrganizationMembersPage() {
   }
 
   // Once organization is loaded, render the main content
-  return <MembersPageContent />;
+ return <MembersPageContent validatedOrg={validatedOrg} />;
 }
