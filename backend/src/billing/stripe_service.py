@@ -287,8 +287,8 @@ class StripeService:
                     'price': price_id,
                     'quantity': 1,
                 }],
-                success_url=f"{self.frontend_url}/billing/success?session_id={{CHECKOUT_SESSION_ID}}",
-                cancel_url=f"{self.frontend_url}/billing/cancel",
+                success_url=f"{self.frontend_url}/billing/success?org_id={organization_id}&session_id={{CHECKOUT_SESSION_ID}}",
+                cancel_url=f"{self.frontend_url}/billing/cancel?org_id={organization_id}",
                 metadata={
                     'organization_id': organization_id,
                     'plan_id': plan_id,

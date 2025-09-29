@@ -14,6 +14,7 @@ import { useBillingInfo } from '@/hooks/use-billing-info';
 function BillingSuccessContent() {
   const searchParams = useSearchParams();
   const organizationId = searchParams?.get('organization_id');
+  const orgId = searchParams?.get('org_id') || organizationId;
   const sessionId = searchParams?.get('session_id');
 
   // Ensure organizationId is a string, or skip the query.
@@ -30,7 +31,7 @@ function BillingSuccessContent() {
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [subscription, sessionId]);
+ }, [subscription, sessionId]);
 
   if (isLoading) {
     return (
@@ -70,7 +71,7 @@ function BillingSuccessContent() {
               {error.message}
             </p>
             <Button asChild className="w-full">
-              <Link href="/billing">
+              <Link href={`/billing?org_id=${orgId}`}>
                 Go to Billing
               </Link>
             </Button>
@@ -111,7 +112,7 @@ function BillingSuccessContent() {
 
             <div className="space-y-3">
               <Button asChild className="w-full">
-                <Link href="/billing">
+                <Link href={`/billing?org_id=${orgId}`}>
                   View Billing Dashboard
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Link>
@@ -142,15 +143,15 @@ function BillingSuccessContent() {
 
           {subscription && creditBalance && (
             <div className="space-y-4">
-              <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <div className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800 rounded-lg p-4">
                 <h4 className="font-semibold text-blue-800 dark:text-blue-100 mb-3">Subscription Details</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-blue-700 dark:text-blue-300">Current Plan:</span>
+                    <span className="text-blue-700 dark:text-blue-30">Current Plan:</span>
                     <span className="font-medium text-blue-900 dark:text-blue-100">{subscription.plan?.name}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-blue-700 dark:text-blue-300">Status:</span>
+                    <span className="text-blue-70 dark:text-blue-300">Status:</span>
                     <Badge variant={subscription.status === 'active' ? 'default' : 'secondary'}>
                       {subscription.status}
                     </Badge>
@@ -158,7 +159,7 @@ function BillingSuccessContent() {
                   {subscription.current_period_end && (
                     <div className="flex justify-between">
                       <span className="text-blue-700 dark:text-blue-300">Next Billing:</span>
-                      <span className="text-blue-900 dark:text-blue-100">
+                      <span className="text-blue-90 dark:text-blue-100">
                         {billingService.formatDate(subscription.current_period_end)}
                       </span>
                     </div>
@@ -167,10 +168,10 @@ function BillingSuccessContent() {
               </div>
 
               <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                <h4 className="font-semibold text-green-800 dark:text-green-100 mb-3">Credit Information</h4>
+                <h4 className="font-semibold text-green-800 dark:text-green-10 mb-3">Credit Information</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-green-700 dark:text-green-300">Total Credits:</span>
+                    <span className="text-green-70 dark:text-green-300">Total Credits:</span>
                     <span className="font-medium text-green-900 dark:text-green-100">
                       {billingService.formatCredits(creditBalance.total_credits)}
                     </span>
@@ -185,11 +186,11 @@ function BillingSuccessContent() {
               </div>
 
               {subscription.cancel_at_period_end && (
-                <div className="bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+                <div className="bg-orange-50 dark:bg-orange-950 border-orange-20 dark:border-orange-800 rounded-lg p-4">
                   <div className="flex items-start gap-3">
                     <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-400 mt-0.5" />
                     <div>
-                      <h4 className="font-semibold text-orange-800 dark:text-orange-100 mb-1">Important Notice</h4>
+                      <h4 className="font-semibold text-orange-800 dark:text-orange-10 mb-1">Important Notice</h4>
                       <p className="text-sm text-orange-700 dark:text-orange-200">
                         If you downgraded, changes will apply at the end of the current billing period.
                       </p>

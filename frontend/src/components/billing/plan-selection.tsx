@@ -195,7 +195,7 @@ export function PlanSelection({ organizationId, currentSubscription, onPlanSelec
                 
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
-                    {plan.name}
+                    {plan.name.split(':')[0]}
                     {isTrialPlan(plan) && (
                       <Badge variant="secondary">
                         <Zap className="w-3 h-3 mr-1" />
@@ -254,7 +254,7 @@ export function PlanSelection({ organizationId, currentSubscription, onPlanSelec
                           Processing...
                         </>
                       ) : (
-                        `Subscribe to ${plan.name}`
+                        `Subscribe`
                       )}
                     </Button>
                   )}
@@ -284,7 +284,7 @@ export function PlanSelection({ organizationId, currentSubscription, onPlanSelec
                 
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
-                    {plan.name}
+                    {plan.name.split(':')[0]}
                     {isTrialPlan(plan) && (
                       <Badge variant="secondary">
                         <Zap className="w-3 h-3 mr-1" />
@@ -348,7 +348,7 @@ export function PlanSelection({ organizationId, currentSubscription, onPlanSelec
                           Processing...
                         </>
                       ) : (
-                        `Subscribe to ${plan.name}`
+                        `Subscribe`
                       )}
                     </Button>
                   )}

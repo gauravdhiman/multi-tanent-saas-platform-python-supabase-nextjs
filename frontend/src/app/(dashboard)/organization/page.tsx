@@ -30,7 +30,7 @@ export default function OrganizationPage() {
   const { currentOrganization, loading: orgLoading, setCurrentOrganization } = useOrganization();
   const { canUpdateOrganization, canViewMembers, isPlatformAdmin, isOrgAdmin } = useUserPermissions();
   const searchParams = useSearchParams();
-  const orgId = searchParams.get('orgId');
+  const orgId = searchParams.get('org_id');
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
@@ -136,7 +136,7 @@ export default function OrganizationPage() {
                     <span>Edit Organization</span>
                   </DropdownMenuItem>
                   {canViewMembers && (
-                    <Link href={`/organization/members?orgId=${validatedOrg.id}`}>
+                    <Link href={`/organization/members?org_id=${validatedOrg.id}`}>
                       <DropdownMenuItem className="flex items-center space-x-2">
                         <Users className="h-4 w-4" />
                         <span>Manage Members</span>
@@ -144,14 +144,14 @@ export default function OrganizationPage() {
                     </Link>
                   )}
                   {canUpdateOrganization && (
-                    <Link href={`/organization/settings?orgId=${validatedOrg.id}`}>
+                    <Link href={`/organization/settings?org_id=${validatedOrg.id}`}>
                       <DropdownMenuItem className="flex items-center space-x-2">
                         <Settings className="h-4 w-4" />
                         <span>Organization Settings</span>
                       </DropdownMenuItem>
                     </Link>
                   )}
-                  <Link href={`/billing?orgId=${validatedOrg.id}`}>
+                  <Link href={`/billing?org_id=${validatedOrg.id}`}>
                     <DropdownMenuItem className="flex items-center space-x-2">
                       <CreditCard className="h-4 w-4" />
                       <span>Billing & Subscriptions</span>

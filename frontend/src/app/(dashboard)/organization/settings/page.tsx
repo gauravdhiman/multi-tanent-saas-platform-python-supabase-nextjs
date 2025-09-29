@@ -29,7 +29,7 @@ export default function OrganizationSettingsPage() {
   const { currentOrganization, loading: orgLoading, error: orgError, setCurrentOrganization } = useOrganization();
   const {canDeleteOrganization, canViewSettings} = useUserPermissions();
   const searchParams = useSearchParams();
-  const orgId = searchParams.get('orgId');
+  const orgId = searchParams.get('org_id');
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);

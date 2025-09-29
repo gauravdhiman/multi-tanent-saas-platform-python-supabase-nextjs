@@ -217,7 +217,7 @@ function MembersPageContent({ validatedOrg }: { validatedOrg: Organization | nul
 export default function OrganizationMembersPage() {
   const { loading: orgLoading, error: orgError, currentOrganization, setCurrentOrganization } = useOrganization();
   const searchParams = useSearchParams();
-  const orgId = searchParams.get('orgId');
+  const orgId = searchParams.get('org_id');
 
   // Validate organization access when orgId is provided
   const { isValid: isOrgValid, loading: validationLoading, organization: validatedOrg } = useOrganizationById(orgId);

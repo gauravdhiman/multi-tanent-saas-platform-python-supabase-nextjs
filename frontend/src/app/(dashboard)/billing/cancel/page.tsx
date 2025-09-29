@@ -5,8 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { XCircle, ArrowLeft, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 export default function BillingCancelPage() {
+  const searchParams = useSearchParams();
+  const orgId = searchParams.get('org_id');
+
   return (
     <div className="container mx-auto px-4 py-16">
       <div className="max-w-md mx-auto text-center">
@@ -37,7 +41,7 @@ export default function BillingCancelPage() {
 
             <div className="space-y-3">
               <Button asChild className="w-full">
-                <Link href="/billing">
+                <Link href={`/billing?org_id=${orgId}`}>
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back to Billing
                 </Link>

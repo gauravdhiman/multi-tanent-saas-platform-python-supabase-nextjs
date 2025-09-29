@@ -76,7 +76,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     const breadcrumbs = [];
     
     // Extract orgId from the search params
-    const orgId = searchParams.get('orgId');
+    const orgId = searchParams.get('org_id');
     
     if (pathname === '/dashboard') {
       breadcrumbs.push({ name: 'Dashboard', href: null });
@@ -85,11 +85,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     } else if (pathname === '/organization') {
       breadcrumbs.push({ name: 'Organization', href: null });
     } else if (pathname === '/organization/members') {
-      const orgHref = orgId ? `/organization?orgId=${orgId}` : '/organization';
+      const orgHref = orgId ? `/organization?org_id=${orgId}` : '/organization';
       breadcrumbs.push({ name: 'Organization', href: orgHref });
       breadcrumbs.push({ name: 'Members', href: null });
     } else if (pathname === '/organization/settings') {
-      const orgHref = orgId ? `/organization?orgId=${orgId}` : '/organization';
+      const orgHref = orgId ? `/organization?org_id=${orgId}` : '/organization';
       breadcrumbs.push({ name: 'Organization', href: orgHref });
       breadcrumbs.push({ name: 'Settings', href: null });
     } else if (pathname === '/users') {
@@ -100,7 +100,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       breadcrumbs.push({ name: 'Settings', href: null });
     } else if (pathname.startsWith('/organization')) {
       // Handle dynamic organization routes
-      const orgHref = orgId ? `/organization?orgId=${orgId}` : '/organization';
+      const orgHref = orgId ? `/organization?org_id=${orgId}` : '/organization';
       if (pathname.includes('/members')) {
         breadcrumbs.push({ name: 'Organization', href: orgHref });
         breadcrumbs.push({ name: 'Members', href: null });
@@ -218,7 +218,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => {
                     if (currentOrganization) {
-                      router.push(`/billing?orgId=${currentOrganization.id}`);
+                      router.push(`/billing?org_id=${currentOrganization.id}`);
                     } else {
                       router.push('/billing');
                     }
@@ -233,15 +233,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                         <Building2 className="mr-2 h-4 w-4" />
                         <span>Organizations</span>
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => router.push(`/organization?orgId=${currentOrganization.id}`)}>
+                      <DropdownMenuItem onClick={() => router.push(`/organization?org_id=${currentOrganization.id}`)}>
                         <Building2 className="mr-2 h-4 w-4" />
                         <span>Current Organization</span>
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => router.push(`/organization/settings?orgId=${currentOrganization.id}`)}>
+                      <DropdownMenuItem onClick={() => router.push(`/organization/settings?org_id=${currentOrganization.id}`)}>
                         <Settings className="mr-2 h-4 w-4" />
                         <span>Org Settings</span>
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => router.push(`/organization/members?orgId=${currentOrganization.id}`)}>
+                      <DropdownMenuItem onClick={() => router.push(`/organization/members?org_id=${currentOrganization.id}`)}>
                         <Users className="mr-2 h-4 w-4" />
                         <span>Members</span>
                       </DropdownMenuItem>

@@ -179,26 +179,26 @@ export default function OrganizationsPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
                               <DropdownMenuItem asChild>
-                                <Link href={`/organization?orgId=${org.id}`} className="flex items-center">
+                                <Link href={`/organization?org_id=${org.id}`} className="flex items-center">
                                   <Eye className="h-4 w-4 mr-2" />
                                   <span>View</span>
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild>
-                                <Link href={`/organization/members?orgId=${org.id}`} className="flex items-center">
+                                <Link href={`/organization/members?org_id=${org.id}`} className="flex items-center">
                                   <Users className="h-4 w-4 mr-2" />
                                   <span>Members</span>
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild>
-                                <Link href={`/billing?orgId=${org.id}`} className="flex items-center">
+                                <Link href={`/billing?org_id=${org.id}`} className="flex items-center">
                                   <CreditCard className="h-4 w-4 mr-2" />
                                   <span>Billing</span>
                                 </Link>
                               </DropdownMenuItem>
                               {canUpdateOrganization && (
                                 <DropdownMenuItem asChild>
-                                  <Link href={`/organization/settings?orgId=${org.id}`} className="flex items-center">
+                                  <Link href={`/organization/settings?org_id=${org.id}`} className="flex items-center">
                                     <Settings className="h-4 w-4 mr-2" />
                                     <span>Settings</span>
                                   </Link>
