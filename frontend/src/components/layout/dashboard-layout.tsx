@@ -44,7 +44,7 @@ const navigationItems = [
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { user, signOut } = useAuth();
-  const { currentOrganization } = useOrganization();
+  const { organizations, currentOrganization } = useOrganization();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -94,7 +94,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       breadcrumbs.push({ name: 'Settings', href: null });
     } else if (pathname === '/users') {
       breadcrumbs.push({ name: 'Users', href: null });
-    } else if (pathname === '/billing') {
+    } else if (pathname === '/organization/billing') {
+      const orgHref = orgId ? `/organization?org_id=${orgId}` : '/organization';
+      breadcrumbs.push({ name: 'Organization', href: orgHref });
       breadcrumbs.push({ name: 'Billing', href: null });
     } else if (pathname === '/settings') {
       breadcrumbs.push({ name: 'Settings', href: null });
@@ -216,35 +218,35 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    if (currentOrganization) {
-                      router.push(`/billing?org_id=${currentOrganization.id}`);
-                    } else {
-                      router.push('/billing');
-                    }
-                  }}>
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    <span>Billing</span>
-                  </DropdownMenuItem>
                   {currentOrganization && user && (user.hasRole('platform_admin') || user.hasRole('org_admin', currentOrganization.id)) && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => router.push('/organizations')}>
-                        <Building2 className="mr-2 h-4 w-4" />
-                        <span>Organizations</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => router.push(`/organization?org_id=${currentOrganization.id}`)}>
-                        <Building2 className="mr-2 h-4 w-4" />
-                        <span>Current Organization</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => router.push(`/organization/settings?org_id=${currentOrganization.id}`)}>
-                        <Settings className="mr-2 h-4 w-4" />
-                        <span>Org Settings</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => router.push(`/organization/members?org_id=${currentOrganization.id}`)}>
-                        <Users className="mr-2 h-4 w-4" />
-                        <span>Members</span>
-                      </DropdownMenuItem>
+                      {organizations.length > 1 && (
+                        <DropdownMenuItem onClick={() => router.push('/organizations')}>
+                          <Building2 className="mr-2 h-4 w-4" />
+                          <span>Organizations</span>
+                        </DropdownMenuItem>
+                      )}
+                      {organizations.length === 1 && currentOrganization && (
+                        <>
+                          <DropdownMenuItem onClick={() => router.push(`/organization?org_id=${currentOrganization.id}`)}>
+                            <Building2 className="mr-2 h-4 w-4" />
+                            <span>Organization</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push(`/organization/settings?org_id=${currentOrganization.id}`)}>
+                          <Settings className="mr-2 h-4 w-4" />
+                          <span>Org Settings</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push(`/organization/members?org_id=${currentOrganization.id}`)}>
+                            <Users className="mr-2 h-4 w-4" />
+                            <span>Members</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push(`/organization/billing?org_id=${currentOrganization.id}`)}>
+                            <CreditCard className="mr-2 h-4 w-4" />
+                            <span>Billing & Subscriptions</span>
+                          </DropdownMenuItem>
+                        </>
+                      )}
                       <DropdownMenuSeparator />
                     </>
                   )}

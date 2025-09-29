@@ -41,7 +41,7 @@ export default function BillingCancelPage() {
 
             <div className="space-y-3">
               <Button asChild className="w-full">
-                <Link href={`/billing?org_id=${orgId}`}>
+                <Link href={`/organization/billing?org_id=${orgId}`}>
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back to Billing
                 </Link>

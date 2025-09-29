@@ -71,7 +71,7 @@ function BillingSuccessContent() {
               {error.message}
             </p>
             <Button asChild className="w-full">
-              <Link href={`/billing?org_id=${orgId}`}>
+              <Link href={`/organization/billing?org_id=${orgId}`}>
                 Go to Billing
               </Link>
             </Button>
@@ -112,7 +112,7 @@ function BillingSuccessContent() {
 
             <div className="space-y-3">
               <Button asChild className="w-full">
-                <Link href={`/billing?org_id=${orgId}`}>
+                <Link href={`/organization/billing?org_id=${orgId}`}>
                   View Billing Dashboard
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Link>

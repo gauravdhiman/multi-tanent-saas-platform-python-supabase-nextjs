@@ -151,7 +151,7 @@ export default function OrganizationPage() {
                       </DropdownMenuItem>
                     </Link>
                   )}
-                  <Link href={`/billing?org_id=${validatedOrg.id}`}>
+                  <Link href={`/organization/billing?org_id=${validatedOrg.id}`}>
                     <DropdownMenuItem className="flex items-center space-x-2">
                       <CreditCard className="h-4 w-4" />
                       <span>Billing & Subscriptions</span>
