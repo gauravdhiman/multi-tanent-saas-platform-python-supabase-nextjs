@@ -92,6 +92,7 @@ docker compose up --build -d
 - **Styling**: Tailwind CSS
 - **Components**: Shadcn/ui
 - **State Management**: React Query (planned)
+- **Detailed Architecture**: [Frontend Architecture Overview](docs/FRONTEND_ARCHITECTURE.md)
 
 ### Backend (FastAPI)
 - **Framework**: Python FastAPI
@@ -123,7 +124,19 @@ docker compose up --build -d
 │   ├── Dockerfile          # Production Docker config
 │   ├── Dockerfile.dev      # Development Docker config
 │   └── package.json
-├── backend/                 # FastAPI application (to be created)
+├── backend/                 # FastAPI application
+│   ├── src/
+│   │   ├── auth/            # Authentication and RBAC modules
+│   │   ├── billing/         # Billing and subscription management
+│   │   ├── core/            # Core application logic and utilities
+│   │   ├── database/        # Database models and migrations
+│   │   ├── organizations/   # Organization management
+│   │   └── main.py          # Main FastAPI application entry point
+│   ├── alembic/             # Alembic migration scripts
+│   ├── tests/               # Backend tests
+│   ├── Dockerfile           # Production Docker config
+│   ├── Dockerfile.dev       # Development Docker config
+│   └── requirements.txt
 ├── docker-compose.yml       # Production Docker Compose
 ├── docker-compose.dev.yml   # Development Docker Compose
 └── README.md
@@ -303,5 +316,4 @@ This platform includes a comprehensive Role-Based Access Control (RBAC) system t
 
 ### Documentation
 
-For detailed information about the RBAC system, see:
-- [RBAC Documentation](docs/rbac.md) - Comprehensive RBAC system documentation
+For comprehensive documentation, please refer to our [Documentation Summary](docs/new_docs/SUMMARY.md).
