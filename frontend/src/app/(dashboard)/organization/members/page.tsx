@@ -10,14 +10,9 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Users, UserPlus, UserCheck, UserX, MoreHorizontal } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Users, UserPlus } from 'lucide-react';
+import { DataTable } from '@/components/data-table/data-table';
+import { organizationMembersColumns } from '@/components/organization-members/organization-members-data-table-columns';
 import type { Organization } from '@/types/organization';
 
 function MembersPageContent({ validatedOrg }: { validatedOrg: Organization | null }) {
@@ -129,85 +124,10 @@ function MembersPageContent({ validatedOrg }: { validatedOrg: Organization | nul
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Member</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Role</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Status</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Joined</th>
-                  {userPermissions.canManageMembers && (
-                    <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">Actions</th>
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {members.map((member) => (
-                  <tr key={member.id} className="border-b">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center space-x-3">
-                        <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">
-                          {member.first_name?.[0]}{member.last_name?.[0]}
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-90">
-                            {member.first_name} {member.last_name}
-                          </div>
-                          <div className="text-sm text-gray-500">{member.email}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="space-y-1">
-                        {member.roles.map((role) => (
-                          <Badge key={role.id} variant="outline" className="text-xs">
-                            {role.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center space-x-1">
-                        {member.is_verified ? (
-                          <>
-                            <UserCheck className="h-4 w-4 text-green-500" />
-                            <span className="text-sm text-gray-900">Active</span>
-                          </>
-                        ) : (
-                          <>
-                            <UserX className="h-4 w-4 text-yellow-500" />
-                            <span className="text-sm text-gray-900">Pending</span>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">
-                      {new Date(member.created_at).toLocaleDateString()}
-                    </td>
-                    {userPermissions.canManageMembers && (
-                      <td className="px-4 py-3 text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>Edit Roles</DropdownMenuItem>
-                            <DropdownMenuItem>View Profile</DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-600">
-                              Remove Member
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable 
+            columns={organizationMembersColumns} 
+            data={members} 
+          />
         </CardContent>
       </Card>
     </div>
@@ -236,7 +156,7 @@ export default function OrganizationMembersPage() {
     />;
   }
 
-  // Handle organization loading states at the top level
+ // Handle organization loading states at the top level
   if (orgLoading || validationLoading) {
     return <LoadingState message="Loading organization..." />;
   }
@@ -258,7 +178,7 @@ export default function OrganizationMembersPage() {
         variant="default"
       />
     );
-  }
+ }
 
   // Once organization is loaded, render the main content
  return <MembersPageContent validatedOrg={validatedOrg} />;
