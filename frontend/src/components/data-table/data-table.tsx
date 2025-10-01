@@ -62,6 +62,8 @@ export function DataTable<TData, TValue>({
       columnVisibility,
       rowSelection,
     },
+    enableColumnResizing: true,
+    columnResizeMode: 'onChange',
   });
 
   return (
@@ -74,7 +76,13 @@ export function DataTable<TData, TValue>({
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id}>
+                    <TableHead 
+                      key={header.id}
+                      style={{
+                        width: header.getSize(),
+                      }}
+                      className="relative"
+                    >
                       {header.isPlaceholder
                         ? null
                         : header.column.getCanSort() ? (
@@ -139,6 +147,13 @@ export function DataTable<TData, TValue>({
                             )}
                           </div>
                         )}
+                      <div
+                        onMouseDown={header.getResizeHandler()}
+                        onTouchStart={header.getResizeHandler()}
+                        className={`absolute right-0 top-0 h-full w-0.5 bg-border cursor-col-resize select-none touch-none ${
+                          header.column.getCanResize() ? 'opacity-100' : 'opacity-0'
+                        }`}
+                      />
                     </TableHead>
                   );
                 })}
@@ -153,7 +168,12 @@ export function DataTable<TData, TValue>({
                   data-state={row.getIsSelected() && "selected"}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell 
+                      key={cell.id}
+                      style={{
+                        width: cell.column.getSize(),
+                      }}
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()

@@ -16,7 +16,7 @@ import {
 import { UserCheck, UserX, MoreHorizontal, User, Mail, Calendar } from "lucide-react";
 import { format } from "date-fns";
 
-export const organizationMembersColumns: ColumnDef<Member>[] = [
+export const organizationMembersColumns: ColumnDef<Member, unknown>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -38,16 +38,19 @@ export const organizationMembersColumns: ColumnDef<Member>[] = [
     ),
     enableSorting: false,
     enableHiding: false,
+    enableResizing: false, // Disable resizing for the select column
   },
   {
     id: "member",
     header: "Member",
+    size: 250,
+    minSize: 150,
     cell: ({ row }) => {
       const member = row.original;
       return (
         <div className="flex items-center space-x-3">
-          <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">
-            {member.first_name?.[0]}{member.last_name?.[0]}
+          <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-white text-sm font-medium">
+            {member.first_name?.[0]?.toUpperCase()}{member.last_name?.[0]?.toUpperCase()}
           </div>
           <div>
             <div className="font-medium">
@@ -71,6 +74,8 @@ export const organizationMembersColumns: ColumnDef<Member>[] = [
   {
     accessorKey: "roles",
     header: "Role",
+    size: 150,
+    minSize: 100,
     cell: ({ row }) => {
       const roles = row.getValue("roles") as Array<{id: string, name: string, description: string}>;
       return (
@@ -87,6 +92,8 @@ export const organizationMembersColumns: ColumnDef<Member>[] = [
   {
     id: "status",
     header: "Status",
+    size: 120,
+    minSize: 80,
     cell: ({ row }) => {
       const member = row.original;
       return (
@@ -115,6 +122,8 @@ export const organizationMembersColumns: ColumnDef<Member>[] = [
   {
     accessorKey: "created_at",
     header: "Joined",
+    size: 150,
+    minSize: 100,
     cell: ({ row }) => {
       const date = new Date(row.getValue("created_at") as string);
       return (

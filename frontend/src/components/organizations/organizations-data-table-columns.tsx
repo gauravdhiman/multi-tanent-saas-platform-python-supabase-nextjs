@@ -17,7 +17,7 @@ import { MoreHorizontal, Eye, Settings, Users, CreditCard, Edit3, Trash2 } from 
 import Link from "next/link";
 import { isDummyOrganization } from "@/lib/organization-utils";
 
-export const organizationsColumns: ColumnDef<Organization>[] = [
+export const organizationsColumns: ColumnDef<Organization, unknown>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -39,16 +39,21 @@ export const organizationsColumns: ColumnDef<Organization>[] = [
     ),
     enableSorting: false,
     enableHiding: false,
+    enableResizing: false, // Disable resizing for the select column
+    size: 50,
+    minSize: 50,
   },
   {
     accessorKey: "name",
     header: "Name",
+    size: 200,
+    minSize: 100,
     cell: ({ row }) => {
       const org = row.original;
       return (
         <div className="flex items-center">
-          <div className="bg-blue-10 p-2 rounded-lg mr-3">
-            <div className="bg-blue-60 w-5 h-5 rounded flex items-center justify-center">
+          <div className="bg-primary/10 p-2 rounded-lg mr-3">
+            <div className="bg-primary w-5 h-5 rounded-full flex items-center justify-center">
               <span className="text-white text-xs font-bold">
                 {org.name.charAt(0).toUpperCase()}
               </span>
@@ -71,6 +76,8 @@ export const organizationsColumns: ColumnDef<Organization>[] = [
   {
     accessorKey: "description",
     header: "Description",
+    size: 250,
+    minSize: 150,
     cell: ({ row }) => {
       const description = row.getValue("description") as string | null;
       return (
@@ -104,6 +111,8 @@ export const organizationsColumns: ColumnDef<Organization>[] = [
   {
     accessorKey: "slug",
     header: "Slug",
+    size: 150,
+    minSize: 100,
     cell: ({ row }) => {
       const slug = row.getValue("slug") as string;
       return (
@@ -116,6 +125,8 @@ export const organizationsColumns: ColumnDef<Organization>[] = [
   {
     accessorKey: "created_at",
     header: "Created",
+    size: 150,
+    minSize: 100,
     cell: ({ row }) => {
       const date = new Date(row.getValue("created_at") as string);
       return (
