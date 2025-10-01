@@ -11,6 +11,7 @@ from src.rbac.user_roles.models import UserRole, UserRoleCreate, UserRoleUpdate,
 from src.rbac.roles.models import Role, RoleWithPermissions, UserRoleWithPermissions
 from src.rbac.permissions.models import Permission
 from src.organization.member_models import OrganizationMember, MemberRole
+from src.shared.utils import extract_first_last_name
 
 logger = logging.getLogger(__name__)
 
@@ -544,11 +545,14 @@ class UserRoleService:
                                 if email_confirmed_at is None and hasattr(user, 'get'):
                                     email_confirmed_at = user.get('email_confirmed_at')
                                 
+                                # Extract first_name and last_name using utility function
+                                first_name, last_name = extract_first_last_name(user_metadata)
+                                
                                 users_data[user_id] = {
                                     "id": user_id,
                                     "email": email or "",
-                                    "first_name": user_metadata.get("first_name", ""),
-                                    "last_name": user_metadata.get("last_name", ""),
+                                    "first_name": first_name,
+                                    "last_name": last_name,
                                     "is_verified": email_confirmed_at is not None,
                                     "created_at": created_at.isoformat() if created_at and hasattr(created_at, 'isoformat') else str(created_at) if created_at else ""
                                 }
@@ -606,11 +610,14 @@ class UserRoleService:
                                 if email_confirmed_at is None and hasattr(user, 'get'):
                                     email_confirmed_at = user.get('email_confirmed_at')
                                 
+                                # Extract first_name and last_name using utility function
+                                first_name, last_name = extract_first_last_name(user_metadata)
+                                    
                                 users_data[user_id] = {
                                     "id": user_id,
                                     "email": email or "",
-                                    "first_name": user_metadata.get("first_name", ""),
-                                    "last_name": user_metadata.get("last_name", ""),
+                                    "first_name": first_name,
+                                    "last_name": last_name,
                                     "is_verified": email_confirmed_at is not None,
                                     "created_at": created_at.isoformat() if created_at and hasattr(created_at, 'isoformat') else str(created_at) if created_at else ""
                                 }
@@ -654,11 +661,14 @@ class UserRoleService:
                             if email_confirmed_at is None and hasattr(user, 'get'):
                                 email_confirmed_at = user.get('email_confirmed_at')
                             
+                            # Extract first_name and last_name using utility function
+                            first_name, last_name = extract_first_last_name(user_metadata)
+                            
                             users_data[user_id] = {
                                 "id": user_id,
                                 "email": email or "",
-                                "first_name": user_metadata.get("first_name", ""),
-                                "last_name": user_metadata.get("last_name", ""),
+                                "first_name": first_name,
+                                "last_name": last_name,
                                 "is_verified": email_confirmed_at is not None,
                                 "created_at": created_at.isoformat() if created_at and hasattr(created_at, 'isoformat') else str(created_at) if created_at else ""
                             }

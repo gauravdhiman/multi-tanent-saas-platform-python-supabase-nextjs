@@ -12,6 +12,7 @@ from config import supabase_config
 from .models import SignUpRequest, SignInRequest, AuthResponse, UserProfile
 from src.rbac.roles.service import role_service
 from src.rbac.user_roles.service import user_role_service
+from src.shared.utils import extract_first_last_name
 
 # Get tracer for this module
 tracer = trace.get_tracer(__name__)
@@ -99,11 +100,15 @@ class AuthService:
             
             # Get user profile from metadata
             user_metadata = user.user_metadata or {}
+            
+            # Extract first_name and last_name using utility function
+            first_name, last_name = extract_first_last_name(user_metadata)
+            
             profile = UserProfile(
                 id=user.id,
                 email=user.email,
-                first_name=user_metadata.get("first_name", ""),
-                last_name=user_metadata.get("last_name", ""),
+                first_name=first_name,
+                last_name=last_name,
                 is_verified=user.email_confirmed_at is not None,
                 created_at=user.created_at
             )
@@ -222,11 +227,15 @@ class AuthService:
             
             # Get user profile from metadata
             user_metadata = user.user_metadata or {}
+            
+            # Extract first_name and last_name using utility function
+            first_name, last_name = extract_first_last_name(user_metadata)
+            
             profile = UserProfile(
                 id=user.id,
                 email=user.email,
-                first_name=user_metadata.get("first_name", ""),
-                last_name=user_metadata.get("last_name", ""),
+                first_name=first_name,
+                last_name=last_name,
                 is_verified=user.email_confirmed_at is not None,
                 created_at=user.created_at
             )
@@ -331,11 +340,15 @@ class AuthService:
             
             # Get user profile from metadata
             user_metadata = user.user_metadata or {}
+            
+            # Extract first_name and last_name using utility function
+            first_name, last_name = extract_first_last_name(user_metadata)
+            
             profile = UserProfile(
                 id=user.id,
                 email=user.email,
-                first_name=user_metadata.get("first_name", ""),
-                last_name=user_metadata.get("last_name", ""),
+                first_name=first_name,
+                last_name=last_name,
                 is_verified=user.email_confirmed_at is not None,
                 created_at=user.created_at
             )
@@ -417,11 +430,15 @@ class AuthService:
 
             # Get user profile from metadata
             user_metadata = user.user_metadata or {}
+            
+            # Extract first_name and last_name using utility function
+            first_name, last_name = extract_first_last_name(user_metadata)
+            
             profile = UserProfile(
                 id=user.id,
                 email=user.email,
-                first_name=user_metadata.get("first_name", ""),
-                last_name=user_metadata.get("last_name", ""),
+                first_name=first_name,
+                last_name=last_name,
                 email_confirmed_at=user.email_confirmed_at.isoformat() if user.email_confirmed_at else None,
                 created_at=user.created_at.isoformat() if user.created_at else "",
                 updated_at=user.updated_at.isoformat() if user.updated_at else "",

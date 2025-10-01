@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabase';
 import type { AuthUser, SignUpData, SignInData, AuthContextType, AuthProviderProps } from '@/types/auth';
 import type { UserRoleAssignment } from '@/types/rbac';
 import { useUserProfile } from '@/hooks/use-user-profile';
+import { extractFirstLastName } from '@/lib/user-utils';
 
 import { getMeter } from '@/lib/opentelemetry';
 import {
@@ -48,11 +49,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const transformSupabaseUser = (user: User, roles?: UserRoleAssignment[]): AuthUser => {
     const metadata = user.user_metadata || {};
 
+    // Extract first_name and last_name using utility function
+    const { firstName, lastName } = extractFirstLastName(metadata);
+
     const authUser: AuthUser = {
       id: user.id,
       email: user.email || '',
-      firstName: metadata.first_name || metadata.full_name?.split(' ')[0] || '',
-      lastName: metadata.last_name || metadata.full_name?.split(' ').slice(1).join(' ') || '',
+      firstName,
+      lastName,
       emailConfirmedAt: user.email_confirmed_at || undefined,
       createdAt: user.created_at || '',
       updatedAt: user.updated_at || '',

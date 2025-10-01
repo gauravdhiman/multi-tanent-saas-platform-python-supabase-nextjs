@@ -49,14 +49,14 @@ export const organizationMembersColumns: ColumnDef<Member, unknown>[] = [
       const member = row.original;
       return (
         <div className="flex items-center space-x-3">
-          <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-white text-sm font-medium">
+          <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-white text-sm font-medium">
             {member.first_name?.[0]?.toUpperCase()}{member.last_name?.[0]?.toUpperCase()}
           </div>
           <div>
-            <div className="font-medium">
+            <div className="font-medium text-foreground">
               {member.first_name} {member.last_name}
             </div>
-            <div className="text-sm text-muted-foreground flex items-center">
+            <div className="text-sm text-muted-foreground flex items-center mt-1">
               <Mail className="h-3 w-3 mr-1" />
               {member.email}
             </div>
