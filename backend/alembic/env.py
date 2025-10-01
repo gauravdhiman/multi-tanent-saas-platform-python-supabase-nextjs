@@ -9,15 +9,21 @@ from sqlalchemy import create_engine
 from alembic import context
 
 # Load environment variables from .env file
-# Look for .env file in the current directory and parent directories
-dotenv_path = os.path.join(os.path.dirname(__file__), "..", ".env")
+# Always load .env from the project root directory
+project_root = os.path.join(os.path.dirname(__file__), "..", "..")
+dotenv_path = os.path.join(project_root, ".env")
 if os.path.exists(dotenv_path):
     load_dotenv(dotenv_path)
 else:
-    # Try to find .env in the current directory
-    dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
+    # Fallback to backend .env if project .env doesn't exist
+    dotenv_path = os.path.join(os.path.dirname(__file__), "..", ".env")
     if os.path.exists(dotenv_path):
         load_dotenv(dotenv_path)
+    else:
+        # Try to find .env in the current directory
+        dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
+        if os.path.exists(dotenv_path):
+            load_dotenv(dotenv_path)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
