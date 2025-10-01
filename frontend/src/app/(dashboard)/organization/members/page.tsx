@@ -127,6 +127,8 @@ function MembersPageContent({ validatedOrg }: { validatedOrg: Organization | nul
           <DataTable 
             columns={organizationMembersColumns} 
             data={members} 
+            filterColumn="member"
+            filterPlaceholder="Filter members..."
           />
         </CardContent>
       </Card>
