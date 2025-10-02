@@ -369,13 +369,13 @@ class StripeManager:
             if price.type == 'recurring':
                 # This is a subscription plan
                 plan_data = {
-                    'name': f"{product.name} ({price.recurring.interval.title()})",
+                    'name': f"{product.name}:{price.recurring.interval.title()}",
                     'description': product.description or '',
                     'stripe_price_id': price.id,
                     'stripe_product_id': product.id,
                     'price_amount': price.unit_amount,
                     'currency': price.currency.upper(),
-                    'interval': price.recurring.interval,
+                    'interval': "annual" if price.recurring.interval == 'year' else 'monthly',
                     'interval_count': price.recurring.interval_count,
                     # Intelligent defaults - prefer metadata, fallback to sensible defaults
                     'included_credits': int(metadata.get('included_credits', 1000)),

@@ -36,6 +36,8 @@ export const organizationMembersColumns: ColumnDef<Member, unknown>[] = [
         aria-label="Select row"
       />
     ),
+    size: 50,
+    minSize: 50,
     enableSorting: false,
     enableHiding: false,
     enableResizing: false, // Disable resizing for the select column
