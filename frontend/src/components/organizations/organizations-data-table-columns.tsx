@@ -103,9 +103,11 @@ export const organizationsColumns: ColumnDef<Organization, unknown>[] = [
     accessorFn: (row) => row.is_active ? "Active" : "Inactive",
     filterFn: (row, id, value) => {
       const isActive = row.original.is_active;
-      // Convert boolean to string for comparison with filter values
-      const isActiveString = isActive.toString();
-      return value.includes(isActiveString);
+      const status = isActive ? "Active" : "Inactive";
+      if (!Array.isArray(value)) {
+        return true; // If no filter is applied, show all rows
+      }
+      return value.includes(status);
     },
   },
   {

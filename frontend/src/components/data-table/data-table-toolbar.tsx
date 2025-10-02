@@ -40,11 +40,15 @@ export function DataTableToolbar<TData>({
             options={[
               {
                 label: "Active",
-                value: "true",
+                value: "Active",
               },
               {
                 label: "Inactive",
-                value: "false",
+                value: "Inactive",
+              },
+              {
+                label: "Pending",
+                value: "Pending",
               },
             ]}
           />

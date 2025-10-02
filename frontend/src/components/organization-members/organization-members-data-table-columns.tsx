@@ -49,7 +49,7 @@ export const organizationMembersColumns: ColumnDef<Member, unknown>[] = [
       const member = row.original;
       return (
         <div className="flex items-center space-x-3">
-          <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-white text-sm font-medium">
+          <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-medium">
             {member.first_name?.[0]?.toUpperCase()}{member.last_name?.[0]?.toUpperCase()}
           </div>
           <div>
@@ -100,12 +100,12 @@ export const organizationMembersColumns: ColumnDef<Member, unknown>[] = [
         <div className="flex items-center space-x-1">
           {member.is_verified ? (
             <>
-              <UserCheck className="h-4 w-4 text-green-50" />
+              <UserCheck className="h-4 w-4 text-green-600 dark:text-green-400" />
               <span className="text-sm">Active</span>
             </>
           ) : (
             <>
-              <UserX className="h-4 w-4 text-yellow-500" />
+              <UserX className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
               <span className="text-sm">Pending</span>
             </>
           )}
@@ -116,6 +116,9 @@ export const organizationMembersColumns: ColumnDef<Member, unknown>[] = [
     filterFn: (row, id, value) => {
       const member = row.original;
       const status = member.is_verified ? "Active" : "Pending";
+      if (!Array.isArray(value)) {
+        return true; // If no filter is applied, show all rows
+      }
       return value.includes(status);
     },
   },

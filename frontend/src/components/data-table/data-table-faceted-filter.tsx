@@ -44,7 +44,7 @@ export function DataTableFacetedFilter<TData, TValue>({
           {title}
           {selectedValues?.size > 0 && (
             <>
-              <span className="ml-auto flex h-4 w-4 items-center justify-center rounded-full bg-primary text-xs">
+              <span className="ml-auto flex h-4 w-4 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
                 {selectedValues.size}
               </span>
             </>
@@ -78,7 +78,7 @@ export function DataTableFacetedFilter<TData, TValue>({
                       className={cn(
                         "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border",
                         isSelected
-                          ? "bg-primary border-primary"
+                          ? "bg-primary border-primary text-primary-foreground"
                           : "opacity-50 [&_svg]:invisible"
                       )}
                     >
@@ -92,18 +92,22 @@ export function DataTableFacetedFilter<TData, TValue>({
                 );
               })}
             </CommandGroup>
+            </CommandList>
+        </Command>
+        <Command>
+          <CommandList>
             {selectedValues.size > 0 && (
-              <CommandSeparator />
-            )}
-            {selectedValues.size > 0 && (
-              <CommandGroup>
-                <CommandItem
-                  onSelect={() => column?.setFilterValue(undefined)}
-                  className="justify-center text-center"
-                >
-                  Clear filters
-                </CommandItem>
-              </CommandGroup>
+              <>
+                <CommandSeparator />
+                <CommandGroup>
+                  <CommandItem
+                    onSelect={() => column?.setFilterValue(undefined)}
+                    className="justify-center text-center"
+                  >
+                    Clear filters
+                  </CommandItem>
+                </CommandGroup>
+              </>
             )}
           </CommandList>
         </Command>
