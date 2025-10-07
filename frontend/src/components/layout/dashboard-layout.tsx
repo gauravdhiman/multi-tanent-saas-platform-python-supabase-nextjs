@@ -199,9 +199,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-muted-foreground">
-                Welcome, {user?.firstName}
-              </span>
+              <div className="text-right">
+                <p className="text-sm font-medium text-foreground">
+                  Welcome, {user?.firstName}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {user?.email}
+                </p>
+              </div>
               <ThemeToggle />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
