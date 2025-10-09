@@ -25,6 +25,18 @@ This script will:
 - Set up the Python virtual environment
 - Install backend dependencies
 
+### Notification Events Setup
+
+After setting up the environment, you need to initialize the notification events in the database by running the seed script:
+
+```bash
+cd backend
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+python scripts/seed_notification_events.py
+```
+
+This script creates the default notification events needed for the notification system to function properly. It should be run after the database migrations are applied.
+
 ### Easy Container Management
 
 For simplified Docker container management, we provide a comprehensive startup script:

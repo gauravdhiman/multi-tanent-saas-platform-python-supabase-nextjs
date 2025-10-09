@@ -68,7 +68,7 @@ export interface AuthContextType {
   session: any;
   loading: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  signUp: (data: SignUpData) => Promise<{ error: any }>;
+  signUp: (data: SignUpData) => Promise<{ user?: AuthUser; error: any }>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   signIn: (data: SignInData) => Promise<{ error: any }>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -26,6 +26,13 @@ import {
 // Get meter for authentication operations
 const meter = getMeter('auth-context');
 
+export class EmailNotVerifiedError extends Error {
+  constructor(public user: { id: string; email: string; email_confirmed_at: null }) {
+    super('EMAIL_NOT_VERIFIED');
+    this.name = 'EmailNotVerifiedError';
+  }
+}
+
 // Create metrics only if meter is available
 const authAttemptsCounter = meter?.createCounter('auth_attempts', {
   description: 'Number of authentication attempts',
@@ -184,11 +191,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
 
   // Sign up with email and password
-  const signUp = withTelemetrySignUp(
+ const signUp = withTelemetrySignUp(
     async (data: SignUpData) => {
       recordMetric(authAttemptsCounter, 1, { operation: 'signup', source: 'frontend' });
       
-      const { error } = await supabase.auth.signUp({
+      const { data: signUpData, error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
@@ -206,7 +213,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
         recordMetric(authSuccessCounter, 1, { operation: 'signup' });
       }
 
-      return { error };
+      // Transform the signed up user data to our AuthUser type
+      let signedUpUser = null;
+      if (signUpData.user) {
+        signedUpUser = transformSupabaseUser(signUpData.user, []);
+      }
+
+      return { user: signedUpUser, error };
     },
     { name: 'auth.signup', attributes: { operation: 'signup' } },
     { operation: 'Signup', attributes: { operation: 'signup' } }
@@ -216,8 +229,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const signIn = withTelemetrySignIn(
     async (data: SignInData) => {
       recordMetric(authAttemptsCounter, 1, { operation: 'signin', source: 'frontend' });
-      
-      const { error } = await supabase.auth.signInWithPassword({
+
+      const { data: signInData, error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       });
@@ -225,11 +238,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (error) {
         recordMetric(authFailureCounter, 1, { operation: 'signin', error: error.status || 'unknown' });
         throw error;
-      } else {
-        recordMetric(authSuccessCounter, 1, { operation: 'signin' });
       }
 
-      return { error };
+      // Check if user is verified after successful signin
+      if (signInData.user && !signInData.user.email_confirmed_at) {
+        // Sign out the unverified user but return their info for resend functionality
+        const unverifiedUserInfo = {
+          id: signInData.user.id,
+          email: signInData.user.email || '',
+          email_confirmed_at: null
+        };
+        await supabase.auth.signOut();
+        recordMetric(authFailureCounter, 1, { operation: 'signin', error: 'email_not_verified' });
+
+        // Throw custom error with user info
+        throw new EmailNotVerifiedError(unverifiedUserInfo);
+      }
+
+      recordMetric(authSuccessCounter, 1, { operation: 'signin' });
+      return { error: null };
     },
     { name: 'auth.signin', attributes: { operation: 'signin' } },
     { operation: 'Signin', attributes: { operation: 'signin' } }

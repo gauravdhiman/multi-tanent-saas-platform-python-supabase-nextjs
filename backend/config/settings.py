@@ -13,7 +13,8 @@ class Settings(BaseSettings):
     """Application settings with environment variable support."""
     
     # Application Settings
-    app_name: str = Field(default="SaaS Platform API", description="Application name")
+    app_name: str = Field(default="SaaS Platform", description="Application name")
+    app_base_url: str = Field(default="http://localhost:3000", description="Base URL for the application")
     app_version: str = Field(default="1.0.0", description="Application version")
     debug: bool = Field(default=False, description="Debug mode")
     environment: str = Field(default="development", description="Environment (development/production)")
@@ -51,6 +52,11 @@ class Settings(BaseSettings):
     # Stripe Settings
     stripe_secret_key: Optional[str] = Field(default=None, description="Stripe secret key")
     stripe_webhook_secret: Optional[str] = Field(default=None, description="Stripe webhook endpoint secret")
+    
+    # Resend Settings
+    resend_api_key: Optional[str] = Field(default=None, description="Resend API key for email notifications")
+    resend_from_email: str = Field(default="noreply@example.com", description="Default sender email address")
+    resend_from_name: str = Field(default="SaaS Platform", description="Default sender name")
     
     # OpenTelemetry Settings
     new_relic_license_key: Optional[str] = Field(default=None, description="New Relic license key")

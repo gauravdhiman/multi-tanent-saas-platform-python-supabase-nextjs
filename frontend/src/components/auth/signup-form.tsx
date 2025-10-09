@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/auth-context';
+import { supabase } from '@/lib/supabase';
+import { notificationService } from '@/services/notification-service';
 
 const signUpSchema = z.object({
   firstName: z.string().min(1, 'First name is required').max(50),
@@ -80,21 +82,34 @@ export function SignUpForm() {
     setIsLoading('password');
     setError(null);
     setSuccess(null);
-    
+
     try {
-      const { error } = await signUp({
+      const { user, error } = await signUp({
         email: data.email,
         password: data.password,
         passwordConfirm: data.passwordConfirm || '',
         firstName: data.firstName,
         lastName: data.lastName,
       });
-      
+
       if (error) {
         setError(error.message);
-      } else {
+      } else if (user) {
+        // Send verification email after successful signup using the returned user details
+        try {
+          await notificationService.sendVerificationEmail(user.id);
+
+          // Sign out the user as email verification is required
+          //await supabase.auth.signOut();
+        } catch (emailError) {
+          console.warn('Error sending verification email:', emailError);
+          // Don't fail the signup if email sending fails
+        }
+
         setSuccess('Account created! Please check your email for verification.');
         // Note: Organization creation will be handled after email verification and sign in
+      } else {
+        setError('User details not returned after signup. Please try again.');
       }
     } catch (error) {
       console.error('Sign up error:', error);
