@@ -26,13 +26,6 @@ import {
 // Get meter for authentication operations
 const meter = getMeter('auth-context');
 
-export class EmailNotVerifiedError extends Error {
-  constructor(public user: { id: string; email: string; email_confirmed_at: null }) {
-    super('EMAIL_NOT_VERIFIED');
-    this.name = 'EmailNotVerifiedError';
-  }
-}
-
 // Create metrics only if meter is available
 const authAttemptsCounter = meter?.createCounter('auth_attempts', {
   description: 'Number of authentication attempts',
@@ -191,7 +184,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
 
   // Sign up with email and password
- const signUp = withTelemetrySignUp(
+  const signUp = withTelemetrySignUp(
     async (data: SignUpData) => {
       recordMetric(authAttemptsCounter, 1, { operation: 'signup', source: 'frontend' });
       
@@ -230,7 +223,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     async (data: SignInData) => {
       recordMetric(authAttemptsCounter, 1, { operation: 'signin', source: 'frontend' });
 
-      const { data: signInData, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       });
@@ -238,21 +231,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (error) {
         recordMetric(authFailureCounter, 1, { operation: 'signin', error: error.status || 'unknown' });
         throw error;
-      }
-
-      // Check if user is verified after successful signin
-      if (signInData.user && !signInData.user.email_confirmed_at) {
-        // Sign out the unverified user but return their info for resend functionality
-        const unverifiedUserInfo = {
-          id: signInData.user.id,
-          email: signInData.user.email || '',
-          email_confirmed_at: null
-        };
-        await supabase.auth.signOut();
-        recordMetric(authFailureCounter, 1, { operation: 'signin', error: 'email_not_verified' });
-
-        // Throw custom error with user info
-        throw new EmailNotVerifiedError(unverifiedUserInfo);
       }
 
       recordMetric(authSuccessCounter, 1, { operation: 'signin' });

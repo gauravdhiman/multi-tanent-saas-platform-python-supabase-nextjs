@@ -14,11 +14,6 @@ from src.rbac.roles.service import role_service
 from src.rbac.user_roles.service import user_role_service
 from src.shared.utils import extract_first_last_name
 
-# Import notification service
-from src.notifications.service import notification_service
-from src.notifications.models import SendNotificationRequest
-from config.settings import settings
-
 # Get tracer for this module
 tracer = trace.get_tracer(__name__)
 
@@ -167,30 +162,6 @@ class AuthService:
                 logging.error(f"Error assigning default role: {e}")
                 current_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             
-            # Send email verification notification for password sign-ups
-            # OAuth sign-ups don't require email verification since the provider has already verified the email
-            try:
-                # Check if user's email is already confirmed by Supabase
-                if not user.email_confirmed_at:
-                    # Send email verification notification
-                    verification_request = SendNotificationRequest(
-                        event_key="user.email_verification",
-                        recipient_email=user.email,
-                        recipient_name=f"{first_name} {last_name}".strip(),
-                        user_id=UUID(user.id),
-                        template_variables={
-                            "user_name": f"{first_name} {last_name}".strip(),
-                            "verification_url": f"{settings.app_base_url}/verify-email?token={user.id}",  # This would be the actual verification URL
-                            "expiry_hours": "24"  # Verification link expires in 24 hours
-                        }
-                    )
-                    await notification_service.send_notification(verification_request)
-                    logging.info(f"Email verification sent to user: {user.id}")
-            except Exception as notification_error:
-                # Log the error but don't fail the signup process
-                logging.error(f"Failed to send email verification: {notification_error}")
-                current_span.add_event("notification_error", {"error": str(notification_error)})
-
             current_span.set_status(trace.Status(trace.StatusCode.OK))
             return auth_response, None
             

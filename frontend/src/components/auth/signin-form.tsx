@@ -9,9 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useAuth, EmailNotVerifiedError } from '@/contexts/auth-context';
+import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
-import { ResendVerification } from '@/components/auth/resend-verification';
 
 const signInSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -24,9 +23,6 @@ export function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
-  const [unverifiedEmail, setUnverifiedEmail] = useState<string>('');
-  const [unverifiedUserId, setUnverifiedUserId] = useState<string>('');
   const { signIn, signInWithOAuth } = useAuth();
 
   const {
@@ -40,7 +36,6 @@ export function SignInForm() {
   const handleSignIn = async (data: SignInData) => {
     setIsLoading('password');
     setError('');
-    setShowVerificationPrompt(false);
     try {
       const result = await signIn(data);
       if (result?.error) {
@@ -49,15 +44,7 @@ export function SignInForm() {
       // Success case handled by global route guard
     } catch (error) {
       console.error('Sign in error:', error);
-      if (error instanceof EmailNotVerifiedError && error.message === 'EMAIL_NOT_VERIFIED') {
-        // Extract user info from the custom error
-        const userInfo = (error as EmailNotVerifiedError).user;
-        setShowVerificationPrompt(true);
-        setUnverifiedEmail(userInfo?.email || data.email);
-        setUnverifiedUserId(userInfo?.id || '');
-      } else {
-        setError('An unexpected error occurred. Please try again.');
-      }
+      setError('An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(null);
     }
@@ -182,21 +169,6 @@ export function SignInForm() {
           )}
         </Button>
       </form>
-
-      {showVerificationPrompt && (
-        <div className="mt-6">
-          <ResendVerification
-            userEmail={unverifiedEmail}
-            userId={unverifiedUserId}
-            onResendSuccess={() => {
-              // Could show a success message or redirect
-            }}
-            onResendError={(error) => {
-              setError(error);
-            }}
-          />
-        </div>
-      )}
 
       <div className="relative my-6">
         <div className="absolute inset-0 flex items-center">
