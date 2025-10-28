@@ -148,14 +148,14 @@ export function SignUpForm() {
     <div className="w-full max-w-md mx-auto">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {error && (
-          <Alert variant="destructive" className="bg-red-950/50 border-red-800/50">
-            <AlertDescription className="text-red-300">{error}</AlertDescription>
+          <Alert variant="destructive" className="bg-red-100 border-red-50">
+            <AlertDescription className="text-red-700">{error}</AlertDescription>
           </Alert>
         )}
         
         {success && (
-          <Alert className="border-green-700/50 bg-green-950/30">
-            <AlertDescription className="text-green-300">{success}</AlertDescription>
+          <Alert className="border-green-100 bg-green-50">
+            <AlertDescription className="text-green-700">{success}</AlertDescription>
           </Alert>
         )}
         

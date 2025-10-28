@@ -43,8 +43,20 @@ export function SignInForm() {
       }
       // Success case handled by global route guard
     } catch (error) {
-      console.error('Sign in error:', error);
-      setError('An unexpected error occurred. Please try again.');
+      console.log('Sign in error:', error);
+      // Check if it's an email not confirmed error from Supabase
+      if (error && typeof error === 'object' && 'code' in error && typeof error.code === 'string') {
+        const errCode = error.code.toLowerCase();
+        if (errCode === 'email_not_confirmed') {
+          setError('Please verify your email address before signing in. Check your email for a verification link.');
+        } else if (errCode === 'invalid_credentials') {
+          setError('Invalid credentials. Please try again with the correct credentials.');
+        } else {
+          setError('An unexpected error occurred. Please try again.');
+        }
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+      }
     } finally {
       setIsLoading(null);
     }
@@ -88,8 +100,8 @@ export function SignInForm() {
     <div className="w-full max-w-md mx-auto">
       <form onSubmit={handleSubmit(handleSignIn)} className="space-y-6">
         {error && (
-          <Alert variant="destructive" className="bg-red-950/50 border-red-800/50">
-            <AlertDescription className="text-red-300">{error}</AlertDescription>
+          <Alert variant="destructive" className="bg-red-100 border-red-300">
+            <AlertDescription className="text-red-700">{error}</AlertDescription>
           </Alert>
         )}
 
