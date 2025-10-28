@@ -13,10 +13,11 @@ export function OrganizationCheck({ children }: OrganizationCheckProps) {
   const router = useRouter();
   const [checking, setChecking] = useState(true);
   const [hasRefreshed, setHasRefreshed] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
     const checkOrganization = async () => {
-      if (authLoading || orgLoading || !user) {
+      if (authLoading || orgLoading || !user || redirecting) {
         return;
       }
 
@@ -40,6 +41,7 @@ export function OrganizationCheck({ children }: OrganizationCheckProps) {
           return;
         } else {
           // Already refreshed and still no organizations, redirect to creation
+          setRedirecting(true);
           router.replace('/auth/create-organization');
           return;
         }
@@ -49,10 +51,10 @@ export function OrganizationCheck({ children }: OrganizationCheckProps) {
     };
 
     checkOrganization();
-  }, [user, authLoading, orgLoading, organizations, orgError, router, refreshOrganizations, hasRefreshed]);
+  }, [user, authLoading, orgLoading, organizations, orgError, router, refreshOrganizations, hasRefreshed, redirecting]);
 
   // Show loading state while checking
-  if (authLoading || checking) {
+  if (authLoading || orgLoading || checking) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">

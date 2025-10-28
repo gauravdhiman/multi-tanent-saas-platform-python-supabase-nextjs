@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/auth-context';
+import { useOrganization } from '@/contexts/organization-context';
 import { useRouter } from 'next/navigation';
 import { organizationService } from '@/services/organization-service';
 import { createDummyOrganizationData } from '@/lib/organization-utils';
@@ -48,11 +49,17 @@ export function OrganizationCreationForm({ onSkip, onSuccess }: OrganizationCrea
   
   const name = watch('name');
 
+  const { refreshOrganizations } = useOrganization();
+  
   const waitForOrganization = async () => {
     setWaitingForOrg(true);
-    const maxAttempts = 6; // 3 seconds with 500ms intervals
+    const maxAttempts = 10; // 5 seconds with 500ms intervals
     for (let i = 0; i < maxAttempts; i++) {
       try {
+        // Refresh the organization context
+        await refreshOrganizations();
+        
+        // Check if organizations are now available in context
         const orgs = await organizationService.getUserOrganizations();
         if (orgs.length > 0) {
           // Organization found, redirect
